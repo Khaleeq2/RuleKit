@@ -2,7 +2,7 @@
   <img src="public/RuleKit-Slate-Blue.svg" alt="RuleKit" width="48" height="48" />
   <h1>RuleKit</h1>
   <p><strong>A self-serve rules engine for building, testing, and deploying decision logic.</strong></p>
-  <p>Define rules. Test them. Ship them. Review every run.</p>
+  <p>Define rules. Test them. Ship them. Where decisions follow rules.</p>
 </div>
 
 ---

@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Home,
-  GitBranch,
+  ShieldCheck,
   Play,
   Settings,
   LogOut,
@@ -17,6 +17,7 @@ import {
   Moon,
   ChevronsUpDown,
   ChevronRight,
+  ChevronLeft,
   Building2,
   Plus,
   Check,
@@ -46,7 +47,7 @@ import { CreditBalance } from '@/app/lib/types';
 
 const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: Home, href: '/home' },
-  { id: 'decisions', label: 'Rules', icon: GitBranch, href: '/decisions' },
+  { id: 'decisions', label: 'Rules', icon: ShieldCheck, href: '/decisions' },
   { id: 'history', label: 'History', icon: Play, href: '/history' },
 ] as const;
 
@@ -73,6 +74,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const [credits, setCredits] = useState<CreditBalance | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -155,61 +157,87 @@ export function AppLayout({ children }: AppLayoutProps) {
         {/* ── Below header: icon rail + content ── */}
         <div className="flex-1 flex min-h-0">
 
-          {/* Sidebar — icon rail with hover expand chevron */}
-          <aside className="relative w-[60px] flex-shrink-0 border-r border-[var(--border)] flex flex-col group/sidebar">
+          {/* Sidebar — expandable icon rail */}
+          <aside
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSidebarExpanded(!sidebarExpanded);
+            }}
+            className={`
+              relative flex-shrink-0 border-r border-[var(--border)] flex flex-col group/sidebar
+              transition-all duration-200 ease-in-out cursor-pointer
+              ${sidebarExpanded ? 'w-[200px]' : 'w-[60px]'}
+            `}
+          >
 
-            {/* Expand chevron — appears on sidebar hover */}
+            {/* Toggle chevron — vertically centered, appears on hover */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="
-                    absolute -right-3 top-3 z-50
+                  onClick={() => setSidebarExpanded(!sidebarExpanded)}
+                  className={`
+                    absolute -right-3 top-1/2 -translate-y-1/2 z-50
                     w-6 h-6 rounded-full
-                    bg-[var(--card)] border border-[var(--border)] shadow-sm
+                    bg-[var(--card)] border border-[var(--ring)]/40 shadow-sm
                     flex items-center justify-center
                     text-[var(--muted-foreground)] hover:text-[var(--foreground)]
-                    opacity-0 group-hover/sidebar:opacity-100
                     transition-all duration-200
                     cursor-pointer
-                  "
+                    ${sidebarExpanded ? 'opacity-100' : 'opacity-0 group-hover/sidebar:opacity-100'}
+                  `}
                 >
-                  <ChevronRight className="w-3 h-3" />
+                  {sidebarExpanded
+                    ? <ChevronLeft className="w-3 h-3" />
+                    : <ChevronRight className="w-3 h-3" />
+                  }
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" className="font-medium">
-                Expand sidebar
+                {sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
               </TooltipContent>
             </Tooltip>
 
             {/* Navigation */}
-            <nav className="flex-1 py-3">
+            <nav
+              className="flex-1 py-3"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setSidebarExpanded(!sidebarExpanded);
+              }}
+            >
               <ul className="space-y-1 px-2.5">
                 {NAV_ITEMS.map((item) => {
                   const isActive = activeNavId === item.id;
                   const Icon = item.icon;
 
+                  const navLink = (
+                    <Link
+                      href={item.href}
+                      className={`
+                        flex items-center gap-3 py-2.5 rounded-lg
+                        transition-all duration-150
+                        ${sidebarExpanded ? 'px-3' : 'justify-center'}
+                        ${isActive
+                          ? 'bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)] shadow-[0_1px_2px_0_rgb(0_0_0/0.06)]'
+                          : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]/70'
+                        }
+                      `}
+                    >
+                      <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+                      {sidebarExpanded && (
+                        <span className="text-sm font-medium truncate">{item.label}</span>
+                      )}
+                    </Link>
+                  );
+
                   return (
                     <li key={item.id}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Link
-                            href={item.href}
-                            className={`
-                              flex items-center justify-center py-2.5 rounded-lg
-                              transition-all duration-150
-                              ${isActive
-                                ? 'bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)] shadow-[0_1px_2px_0_rgb(0_0_0/0.06)]'
-                                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]/70'
-                              }
-                            `}
-                          >
-                            <Icon className="w-[18px] h-[18px]" />
-                          </Link>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="font-medium">
-                          {item.label}
-                        </TooltipContent>
-                      </Tooltip>
+                      {sidebarExpanded ? navLink : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>{navLink}</TooltipTrigger>
+                          <TooltipContent side="right" className="font-medium">
+                            {item.label}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </li>
                   );
                 })}
@@ -220,23 +248,14 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className="px-2.5 py-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="flex items-center justify-center w-full p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]/70 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
-                          U
-                        </div>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="font-medium">
-                      <span>user@example.com</span>
-                      {credits && (
-                        <span className={`ml-2 text-xs tabular-nums ${credits.balance <= 10 ? 'text-[var(--warning)]' : ''}`}>
-                          ({credits.balance} credits)
-                        </span>
-                      )}
-                    </TooltipContent>
-                  </Tooltip>
+                  <button className={`flex items-center w-full p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors ${sidebarExpanded ? 'gap-2.5' : 'justify-center'}`}>
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]/70 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                      U
+                    </div>
+                    {sidebarExpanded && (
+                      <span className="text-sm text-[var(--foreground)] truncate">user@example.com</span>
+                    )}
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" side="right" className="w-52">
                   <DropdownMenuItem onClick={() => router.push('/settings')}>
