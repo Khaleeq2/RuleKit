@@ -66,10 +66,10 @@ export default function SettingsPage() {
       <div className="max-w-[800px] mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-[var(--foreground)] tracking-tight">
+          <h1 className="text-[22px] font-semibold text-[var(--foreground)] tracking-[-0.01em] leading-tight">
             Settings
           </h1>
-          <p className="text-[var(--muted-foreground)] mt-1">
+          <p className="text-[13px] text-[var(--muted-foreground)] mt-1">
             Manage your account and preferences
           </p>
         </div>

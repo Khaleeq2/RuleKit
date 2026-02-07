@@ -119,7 +119,7 @@ export default function DeployPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1000px] mx-auto px-6 py-8">
+      <div className="max-w-[1200px] mx-auto px-6 py-8">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 rounded-xl bg-[var(--muted)] animate-pulse" />
@@ -130,19 +130,19 @@ export default function DeployPage() {
   }
 
   return (
-    <div className="max-w-[1000px] mx-auto px-6 py-8">
+    <div className="max-w-[1200px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--foreground)]">Deploy</h2>
-          <p className="text-sm text-[var(--muted-foreground)] mt-1">
+          <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">Deploy</h2>
+          <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
             Create versions and promote to environments
           </p>
         </div>
         <Dialog open={createVersionOpen} onOpenChange={setCreateVersionOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               Create version
             </Button>
           </DialogTrigger>
@@ -220,7 +220,7 @@ export default function DeployPage() {
                 No versions created yet. Create a version to deploy your decision.
               </p>
               <Button onClick={() => setCreateVersionOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-4 h-4" />
                 Create first version
               </Button>
             </div>
@@ -364,7 +364,7 @@ function VersionRow({
         </div>
       </div>
       <Button variant="outline" size="sm" onClick={onPromote}>
-        <Rocket className="w-4 h-4 mr-2" />
+        <Rocket className="w-4 h-4" />
         Deploy
       </Button>
     </div>

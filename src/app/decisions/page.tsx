@@ -13,13 +13,9 @@ import {
   Pencil,
   Copy,
   Trash2,
-  Clock,
-  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardContent } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
-import { Badge } from '@/app/components/ui/badge';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
   DropdownMenu,
@@ -46,6 +42,7 @@ export default function DecisionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | DecisionStatus>('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Load decisions
   useEffect(() => {
@@ -121,49 +118,78 @@ export default function DecisionsPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === filteredDecisions.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filteredDecisions.map(d => d.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} selected rule${selected.size > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    try {
+      await Promise.all([...selected].map(id => decisionsRepo.remove(id)));
+      toast.success(`${selected.size} rule${selected.size > 1 ? 's' : ''} deleted`);
+      setSelected(new Set());
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      toast.error('Failed to delete some rules');
+    }
+  };
+
   return (
     <div className="min-h-full">
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-6 mb-6">
+      <div className="max-w-[1400px] mx-auto px-6 py-8">
+        {/* Header — deliberate typographic hierarchy */}
+        <div className="flex items-start justify-between gap-6 mb-8">
           <div>
-            <h1 className="text-[length:var(--font-size-h1)] font-semibold text-[var(--foreground)] tracking-tight leading-[var(--line-height-h1)]">
+            <h1 className="text-[22px] font-semibold text-[var(--foreground)] tracking-[-0.01em] leading-tight">
               Rules
             </h1>
-            <p className="text-[length:var(--font-size-body)] text-[var(--muted-foreground)] mt-1 leading-[var(--line-height-body)]">
+            <p className="text-[13px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
               Create, manage, and test your rule logic
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" asChild>
+          <div className="flex items-center gap-2.5">
+            <Button variant="outline" size="sm" className="h-9 text-[13px] font-medium" asChild>
               <Link href="/decisions/new?templates=true">
-                <LayoutTemplate className="w-4 h-4 mr-2" />
+                <LayoutTemplate className="w-3.5 h-3.5" />
                 Templates
               </Link>
             </Button>
-            <Button asChild>
+            <Button size="sm" className="h-9 text-[13px] font-medium" asChild>
               <Link href="/decisions/new">
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-3.5 h-3.5" />
                 New Rule
               </Link>
             </Button>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row md:items-center gap-3 mb-5">
-          <div className="relative flex-1 max-w-xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
+        {/* Filters — refined, restrained */}
+        <div className="flex flex-col md:flex-row md:items-center gap-2.5 mb-6">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]/50" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search rules..."
-              className="pl-10 h-11 bg-[var(--card)] border-[var(--border)] shadow-[0_1px_2px_0_rgb(0_0_0/0.05)] focus:shadow-[0_4px_12px_-4px_rgb(0_0_0/0.1)] transition-all"
+              className="pl-10 h-10 bg-[var(--background)] border-[var(--border)] rounded-lg text-[14px] placeholder:text-[var(--muted-foreground)]/40 focus:border-[var(--foreground)]/20 focus:shadow-[0_0_0_3px_rgb(0_0_0/0.04)] transition-all"
             />
           </div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-            <SelectTrigger className="w-full md:w-[180px] h-11 bg-[var(--card)] border-[var(--border)] shadow-[0_1px_2px_0_rgb(0_0_0/0.05)]">
-              <Filter className="w-4 h-4 mr-2" />
+            <SelectTrigger className="w-full md:w-[160px] h-10 bg-[var(--background)] border-[var(--border)] rounded-lg text-[13px]">
+              <Filter className="w-3.5 h-3.5 mr-1.5 opacity-40" />
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -174,96 +200,134 @@ export default function DecisionsPage() {
           </Select>
         </div>
 
-        {/* Decisions */}
+        {/* Table */}
         {isLoading ? (
-          <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
-            <div className="hidden md:grid grid-cols-[1fr_120px_120px_140px_72px] gap-4 px-4 py-3 bg-[var(--muted)]/50 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">
+          <div className="surface-layered surface-grain overflow-hidden">
+            <div className="glass-header hidden md:grid grid-cols-[1fr_100px_100px_120px_56px] gap-4 px-5 py-2.5 text-[11px] text-[var(--muted-foreground)]/60 uppercase tracking-[0.06em] font-semibold">
               <span>Rule</span>
               <span>Status</span>
-              <span className="text-right">Failures (24h)</span>
+              <span className="text-right">Failures</span>
               <span className="text-right">Updated</span>
               <span></span>
             </div>
-            <div className="divide-y divide-[var(--border)]">
+            <div className="divide-y divide-[var(--border)]/50">
               {[1, 2, 3, 4, 5].map((i) => (
                 <DecisionRowSkeleton key={i} />
               ))}
             </div>
-          </Card>
+          </div>
         ) : filteredDecisions.length === 0 ? (
-          <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)]">
-            <CardContent className="py-16 text-center">
+          <div className="surface-layered surface-grain">
+            <div className="py-20 text-center px-6">
               {decisions.length === 0 ? (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-[var(--primary)]/10 flex items-center justify-center mx-auto mb-4">
-                    <Plus className="w-6 h-6 text-[var(--primary)]" />
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--muted)] to-[var(--background)] border border-[var(--border)] flex items-center justify-center mx-auto mb-5 shadow-sm">
+                    <LayoutTemplate className="w-6 h-6 text-[var(--muted-foreground)]" />
                   </div>
-                  <h3 className="text-[length:var(--font-size-h3)] font-semibold text-[var(--foreground)] mb-2">
-                    No rules yet
+                  <h3 className="text-lg font-semibold text-[var(--foreground)] mb-1.5 tracking-tight">
+                    Build your first rule
                   </h3>
-                  <p className="text-[length:var(--font-size-body-sm)] text-[var(--muted-foreground)] mb-6 max-w-sm mx-auto leading-[var(--line-height-body-sm)]">
-                    Create your first rule to start standardizing your business logic.
+                  <p className="text-[13px] text-[var(--muted-foreground)]/70 mb-8 max-w-sm mx-auto leading-relaxed">
+                    Define conditions, test them against real data, and deploy — all in one place.
                   </p>
-                  <Button asChild>
-                    <Link href="/decisions/new">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create rule
-                    </Link>
-                  </Button>
+                  <div className="flex items-center justify-center gap-2.5">
+                    <Button variant="outline" size="sm" className="h-9 text-[13px]" asChild>
+                      <Link href="/decisions/new?templates=true">
+                        <LayoutTemplate className="w-3.5 h-3.5" />
+                        Start from template
+                      </Link>
+                    </Button>
+                    <Button size="sm" className="h-9 text-[13px]" asChild>
+                      <Link href="/decisions/new">
+                        <Plus className="w-3.5 h-3.5" />
+                        Create rule
+                      </Link>
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <>
-                  <Search className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-4" />
-                  <h3 className="text-[length:var(--font-size-h3)] font-semibold text-[var(--foreground)] mb-2">
-                    No matches found
+                  <Search className="w-6 h-6 text-[var(--muted-foreground)]/40 mx-auto mb-3" />
+                  <h3 className="text-base font-semibold text-[var(--foreground)] mb-1 tracking-tight">
+                    No matches
                   </h3>
-                  <p className="text-[length:var(--font-size-body-sm)] text-[var(--muted-foreground)]">
+                  <p className="text-[13px] text-[var(--muted-foreground)]/60">
                     Try adjusting your search or filters
                   </p>
                 </>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (
-          <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
-            <div className="hidden md:grid grid-cols-[1fr_120px_120px_140px_72px] gap-4 px-4 py-3 bg-[var(--muted)]/50 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">
-              <span>Rule</span>
-              <span>Status</span>
-              <span className="text-right">Failures (24h)</span>
-              <span className="text-right">Updated</span>
-              <span></span>
+          <>
+            {/* Bulk action bar — appears when items selected */}
+            {selected.size > 0 && (
+              <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 mb-3 rounded-xl bg-[var(--card)] border border-[var(--border)] shadow-lg">
+                <span className="text-sm font-medium text-[var(--foreground)]">
+                  {selected.size} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSelected(new Set())}>
+                    Clear
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete{selected.size > 1 ? ` (${selected.size})` : ''}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="surface-layered surface-grain overflow-hidden">
+              {/* Glass header — translucent depth signal */}
+              <div className="glass-header hidden md:grid grid-cols-[36px_1fr_100px_100px_120px_56px] gap-4 px-5 py-2.5 text-[11px] text-[var(--muted-foreground)]/60 uppercase tracking-[0.06em] font-semibold">
+                <div className="flex items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === filteredDecisions.length && filteredDecisions.length > 0}
+                    onChange={toggleSelectAll}
+                    className="w-3.5 h-3.5 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]/30 cursor-pointer accent-[var(--brand)]"
+                  />
+                </div>
+                <span>Rule</span>
+                <span>Status</span>
+                <span className="text-right">Failures</span>
+                <span className="text-right">Updated</span>
+                <span></span>
+              </div>
+              {/* Rows — each a tactile interactive surface */}
+              <div className="divide-y divide-[var(--border)]/50">
+                {filteredDecisions.map((decision, idx) => (
+                  <DecisionRow
+                    key={decision.id}
+                    decision={decision}
+                    isEven={idx % 2 === 0}
+                    isSelected={selected.has(decision.id)}
+                    onToggleSelect={() => toggleSelect(decision.id)}
+                    onDelete={() => handleDelete(decision.id, decision.name)}
+                    onDuplicate={() => handleDuplicate(decision)}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="divide-y divide-[var(--border)]">
-              {filteredDecisions.map((decision, idx) => (
-                <DecisionRow
-                  key={decision.id}
-                  decision={decision}
-                  isEven={idx % 2 === 0}
-                  onDelete={() => handleDelete(decision.id, decision.name)}
-                  onDuplicate={() => handleDuplicate(decision)}
-                />
-              ))}
-            </div>
-          </Card>
+          </>
         )}
 
-        {/* Stats Footer */}
+        {/* Stats footer — quiet, informational, monospaced counts */}
         {decisions.length > 0 && (
-          <div className="mt-8 pt-6 border-t border-[var(--border)]">
-            <div className="flex items-center justify-between text-sm text-[var(--muted-foreground)]">
-              <span>
-                {filteredDecisions.length} of {decisions.length} rules
+          <div className="mt-6 flex items-center justify-between text-[12px] text-[var(--muted-foreground)]/50">
+            <span>
+              <span className="data-mono">{filteredDecisions.length}</span> of <span className="data-mono">{decisions.length}</span> rules
+            </span>
+            <div className="flex items-center gap-5">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="data-mono">{decisions.filter(d => d.status === 'published').length}</span> published
               </span>
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-[var(--success)]" />
-                  {decisions.filter(d => d.status === 'published').length} published
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-4 h-4" />
-                  {decisions.filter(d => d.status === 'draft').length} drafts
-                </span>
-              </div>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted-foreground)]/30" />
+                <span className="data-mono">{decisions.filter(d => d.status === 'draft').length}</span> drafts
+              </span>
             </div>
           </div>
         )}
@@ -278,26 +342,22 @@ export default function DecisionsPage() {
 
 function DecisionRowSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[1fr_120px_120px_140px_72px] gap-4 items-center px-4 py-4">
+    <div className="grid grid-cols-1 md:grid-cols-[1fr_100px_100px_120px_56px] gap-4 items-center px-5 py-4">
       <div className="min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-5 w-16 rounded-full" />
-        </div>
-        <Skeleton className="h-3 w-[70%]" />
+        <Skeleton className="h-4 w-44 mb-2" />
+        <Skeleton className="h-3 w-[60%]" />
       </div>
       <div className="hidden md:block">
-        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-[22px] w-[72px] rounded-full" />
       </div>
       <div className="hidden md:flex justify-end">
-        <Skeleton className="h-4 w-8" />
+        <Skeleton className="h-4 w-6" />
       </div>
       <div className="hidden md:flex justify-end">
-        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-3.5 w-16" />
       </div>
-      <div className="hidden md:flex justify-end gap-2">
-        <Skeleton className="h-8 w-8 rounded-md" />
-        <Skeleton className="h-4 w-4" />
+      <div className="hidden md:flex justify-end">
+        <Skeleton className="h-4 w-4 rounded" />
       </div>
     </div>
   );
@@ -306,88 +366,101 @@ function DecisionRowSkeleton() {
 function DecisionRow({
   decision,
   isEven,
+  isSelected = false,
+  onToggleSelect,
   onDelete,
   onDuplicate,
 }: {
   decision: DecisionWithStats;
   isEven: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
 }) {
   return (
     <div
-      className={`grid grid-cols-1 md:grid-cols-[1fr_120px_120px_140px_72px] gap-4 items-center px-4 py-4 transition-colors group ${isEven ? 'bg-[var(--card)]' : 'bg-[var(--muted)]/20'} hover:bg-[var(--muted)]/60`}
+      className={`grid grid-cols-1 md:grid-cols-[36px_1fr_100px_100px_120px_56px] gap-4 items-center px-5 py-3.5 row-interactive group ${isSelected ? 'bg-[var(--brand)]/5' : ''}`}
     >
+      {/* Checkbox */}
+      <div className="hidden md:flex items-center justify-center">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={onToggleSelect}
+          className="w-3.5 h-3.5 rounded border-[var(--border)] text-[var(--brand)] focus:ring-[var(--brand)]/30 cursor-pointer accent-[var(--brand)]"
+        />
+      </div>
+
+      {/* Rule name + description */}
       <Link href={`/decisions/${decision.id}`} className="min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <h3 className="font-medium text-[var(--foreground)] text-[length:var(--font-size-body)] truncate">
-            {decision.name}
-          </h3>
-          <div className="md:hidden">
-            <StatusBadge status={decision.status} />
-          </div>
-        </div>
-        <p className="text-[length:var(--font-size-body-sm)] text-[var(--muted-foreground)] truncate leading-[var(--line-height-body-sm)]">
+        <h3 className="text-[14px] font-semibold text-[var(--foreground)] truncate tracking-tight leading-snug">
+          {decision.name}
+        </h3>
+        <p className="text-[12px] text-[var(--muted-foreground)]/60 truncate leading-relaxed mt-0.5">
           {decision.description || 'No description'}
         </p>
-        <div className="md:hidden mt-2 flex items-center gap-3 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)]">
-          <span>{formatRelativeTime(decision.updatedAt).relative}</span>
-          <span className="text-[var(--muted-foreground)]/50">•</span>
-          {decision.failuresLast24h > 0 ? (
-            <span className="text-red-600 font-medium">{decision.failuresLast24h} failures</span>
-          ) : (
-            <span>0 failures</span>
+        {/* Mobile-only meta */}
+        <div className="md:hidden mt-2 flex items-center gap-3 text-[11px] text-[var(--muted-foreground)]/50">
+          <StatusBadge status={decision.status} />
+          <span className="data-mono">{formatRelativeTime(decision.updatedAt).relative}</span>
+          {decision.failuresLast24h > 0 && (
+            <span className="data-mono text-red-500 font-semibold">{decision.failuresLast24h} failures</span>
           )}
         </div>
       </Link>
 
+      {/* Status — tactile badge */}
       <div className="hidden md:block">
         <StatusBadge status={decision.status} />
       </div>
 
+      {/* Failures — monospace, weight signals severity */}
       <div className="hidden md:block text-right">
         {decision.failuresLast24h > 0 ? (
-          <span className="text-[length:var(--font-size-body)] font-medium text-red-600">
+          <span className="data-mono text-[14px] font-bold text-red-500/90">
             {decision.failuresLast24h}
           </span>
         ) : (
-          <span className="text-[length:var(--font-size-body)] text-[var(--muted-foreground)]">—</span>
+          <span className="text-[13px] text-[var(--muted-foreground)]/25">—</span>
         )}
       </div>
 
+      {/* Updated — quiet monospace timestamp */}
       <div className="hidden md:block text-right">
-        <span className="text-[length:var(--font-size-body-sm)] text-[var(--muted-foreground)]">
+        <span className="data-mono text-[12px] text-[var(--muted-foreground)]/45">
           {formatRelativeTime(decision.updatedAt).relative}
         </span>
       </div>
 
-      <div className="hidden md:flex items-center justify-end gap-2">
+      {/* Actions — context menu + directional chevron */}
+      <div className="hidden md:flex items-center justify-end gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-              <MoreHorizontal className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity">
+              <MoreHorizontal className="w-3.5 h-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
               <Link href={`/decisions/${decision.id}`}>
-                <Pencil className="w-4 h-4 mr-2" />
+                <Pencil className="w-3.5 h-3.5 mr-2" />
                 Edit
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onDuplicate}>
-              <Copy className="w-4 h-4 mr-2" />
+              <Copy className="w-3.5 h-3.5 mr-2" />
               Duplicate
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-[var(--destructive)]">
-              <Trash2 className="w-4 h-4 mr-2" />
+              <Trash2 className="w-3.5 h-3.5 mr-2" />
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Link href={`/decisions/${decision.id}`} className="opacity-70 group-hover:opacity-100 transition-opacity">
-          <ChevronRight className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors" />
+        <Link href={`/decisions/${decision.id}`}>
+          <ChevronRight className="w-4 h-4 text-[var(--muted-foreground)]/30 chevron-slide" />
         </Link>
       </div>
     </div>
@@ -397,15 +470,15 @@ function DecisionRow({
 function StatusBadge({ status }: { status: DecisionStatus }) {
   if (status === 'published') {
     return (
-      <Badge className="rounded-full bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0.5 font-medium dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
+      <span className="badge-tactile bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60">
+        <span className="w-[5px] h-[5px] rounded-full bg-emerald-500 animate-pulse-soft" />
         Published
-      </Badge>
+      </span>
     );
   }
   return (
-    <Badge variant="secondary" className="rounded-full text-[10px] px-2 py-0.5 font-medium bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+    <span className="badge-tactile bg-[var(--muted)] text-[var(--muted-foreground)]/70 border-[var(--border)]">
       Draft
-    </Badge>
+    </span>
   );
 }

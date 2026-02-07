@@ -18,7 +18,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
 import { decisionsRepo } from '@/app/lib/decisions';
 import { DecisionTemplate, TemplateCategory } from '@/app/lib/types';
 import { toast } from 'sonner';
@@ -181,10 +180,10 @@ export default function NewDecisionPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold text-[var(--foreground)] tracking-tight">
+            <h1 className="text-[22px] font-semibold text-[var(--foreground)] tracking-[-0.01em] leading-tight">
               {step === 'choose' ? 'Choose a starting point' : 'Create new decision'}
             </h1>
-            <p className="text-[var(--muted-foreground)] mt-1">
+            <p className="text-[13px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
               {step === 'choose'
                 ? 'Start from a template or create from scratch'
                 : 'Define your decision and its output type'}
@@ -196,13 +195,13 @@ export default function NewDecisionPage() {
           <div className="space-y-8">
             {/* Start Blank */}
             <Card
-              className="cursor-pointer hover:shadow-[var(--shadow-card-hover)] hover:border-[var(--primary)]/50 transition-all"
+              className="cursor-pointer surface-grain hover:shadow-[var(--shadow-card-hover)] hover:border-[var(--brand)]/30 transition-all"
               onClick={handleStartBlank}
             >
               <CardContent className="py-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[var(--muted)] flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-[var(--muted-foreground)]" />
+                  <div className="w-12 h-12 rounded-xl bg-[var(--brand)]/8 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-[var(--brand)]" />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-[var(--foreground)]">Start from scratch</h3>
@@ -226,13 +225,13 @@ export default function NewDecisionPage() {
                   return (
                     <Card
                       key={template.id}
-                      className="cursor-pointer hover:shadow-[var(--shadow-card-hover)] hover:border-[var(--primary)]/50 transition-all"
+                      className="cursor-pointer surface-grain hover:shadow-[var(--shadow-card-hover)] hover:border-[var(--brand)]/30 transition-all"
                       onClick={() => handleSelectTemplate(template)}
                     >
                       <CardContent className="py-5">
                         <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center flex-shrink-0">
-                            <Icon className="w-5 h-5 text-[var(--primary)]" />
+                          <div className="w-10 h-10 rounded-lg bg-[var(--brand)]/8 flex items-center justify-center flex-shrink-0">
+                            <Icon className="w-5 h-5 text-[var(--brand)]" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium text-[var(--foreground)] mb-1">
@@ -267,8 +266,8 @@ export default function NewDecisionPage() {
 
             {/* Selected template indicator */}
             {selectedTemplate && (
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--primary)]/5 border border-[var(--primary)]/20">
-                <Sparkles className="w-5 h-5 text-[var(--primary)]" />
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--brand)]/5 border border-[var(--brand)]/15">
+                <Sparkles className="w-5 h-5 text-[var(--brand)]" />
                 <span className="text-sm text-[var(--foreground)]">
                   Starting from <strong>{selectedTemplate.name}</strong> template
                 </span>
@@ -276,7 +275,7 @@ export default function NewDecisionPage() {
             )}
 
             {/* Form */}
-            <Card>
+            <Card className="surface-grain">
               <CardHeader>
                 <CardTitle>Decision details</CardTitle>
                 <CardDescription>
@@ -306,28 +305,20 @@ export default function NewDecisionPage() {
                   />
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Label>Output type</Label>
-                  <RadioGroup value={outputType} onValueChange={(v) => setOutputType(v as any)}>
-                    <div className="flex items-start gap-3 p-4 rounded-lg border border-[var(--border)] hover:border-[var(--primary)]/50 transition-colors cursor-pointer">
-                      <RadioGroupItem value="pass_fail" id="pass_fail" className="mt-0.5" />
-                      <Label htmlFor="pass_fail" className="cursor-pointer flex-1">
-                        <span className="font-medium">Pass / Fail</span>
-                        <p className="text-sm text-[var(--muted-foreground)] font-normal mt-0.5">
-                          Returns a binary decision with a reason message
-                        </p>
-                      </Label>
+                  <div className="flex items-center gap-3 p-4 rounded-lg border border-[var(--brand)]/20 bg-[var(--brand)]/5">
+                    <CheckCircle className="w-5 h-5 text-[var(--brand)] flex-shrink-0" />
+                    <div className="flex-1">
+                      <span className="font-medium text-[var(--foreground)]">Pass / Fail</span>
+                      <p className="text-sm text-[var(--muted-foreground)] font-normal mt-0.5">
+                        Returns a binary decision with a reason message
+                      </p>
                     </div>
-                    <div className="flex items-start gap-3 p-4 rounded-lg border border-[var(--border)] hover:border-[var(--primary)]/50 transition-colors cursor-pointer opacity-50">
-                      <RadioGroupItem value="custom" id="custom" className="mt-0.5" disabled />
-                      <Label htmlFor="custom" className="cursor-pointer flex-1">
-                        <span className="font-medium">Custom output</span>
-                        <p className="text-sm text-[var(--muted-foreground)] font-normal mt-0.5">
-                          Define your own output structure (coming soon)
-                        </p>
-                      </Label>
-                    </div>
-                  </RadioGroup>
+                  </div>
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    Custom output types coming soon.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -337,9 +328,9 @@ export default function NewDecisionPage() {
               <Button variant="outline" asChild>
                 <Link href="/decisions">Cancel</Link>
               </Button>
-              <Button onClick={handleCreate} disabled={isCreating || !name.trim()}>
+              <Button onClick={handleCreate} disabled={isCreating || !name.trim()} className="h-10 text-[14px] bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white">
                 {isCreating ? 'Creating...' : 'Create decision'}
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
           </div>

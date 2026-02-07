@@ -140,7 +140,7 @@ export default function SchemaPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1000px] mx-auto px-6 py-8">
+      <div className="max-w-[1200px] mx-auto px-6 py-8">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-16 rounded-xl bg-[var(--muted)] animate-pulse" />
@@ -151,12 +151,12 @@ export default function SchemaPage() {
   }
 
   return (
-    <div className="max-w-[1000px] mx-auto px-6 py-8">
+    <div className="max-w-[1200px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--foreground)]">Input Schema</h2>
-          <p className="text-sm text-[var(--muted-foreground)] mt-1">
+          <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">Input Schema</h2>
+          <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
             Define the data structure your decision expects
           </p>
         </div>
@@ -164,7 +164,7 @@ export default function SchemaPage() {
           <Dialog open={jsonImportOpen} onOpenChange={setJsonImportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
-                <FileJson className="w-4 h-4 mr-2" />
+                <FileJson className="w-4 h-4" />
                 Import from JSON
               </Button>
             </DialogTrigger>
@@ -192,8 +192,8 @@ export default function SchemaPage() {
           </Dialog>
 
           {hasChanges && (
-            <Button onClick={handleSave} disabled={isSaving}>
-              <Save className="w-4 h-4 mr-2" />
+            <Button onClick={handleSave} disabled={isSaving} title="Save changes (⌘+S)">
+              <Save className="w-4 h-4" />
               {isSaving ? 'Saving...' : 'Save changes'}
             </Button>
           )}
@@ -220,14 +220,24 @@ export default function SchemaPage() {
         </CardHeader>
         <CardContent>
           {fields.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-[var(--muted-foreground)] mb-4">
-                No fields defined yet
+            <div className="text-center py-12">
+              <div className="w-12 h-12 rounded-full bg-[var(--primary)]/10 flex items-center justify-center mx-auto mb-4">
+                <FileJson className="w-6 h-6 text-[var(--primary)]" />
+              </div>
+              <h3 className="font-semibold text-[var(--foreground)] mb-1">No fields defined yet</h3>
+              <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-xs mx-auto">
+                Define your input schema manually or import from a sample JSON payload.
               </p>
-              <Button onClick={handleAddField}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add first field
-              </Button>
+              <div className="flex items-center justify-center gap-3">
+                <Button variant="outline" onClick={() => setJsonImportOpen(true)}>
+                  <FileJson className="w-4 h-4" />
+                  Import from JSON
+                </Button>
+                <Button onClick={handleAddField}>
+                  <Plus className="w-4 h-4" />
+                  Add field manually
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -254,7 +264,7 @@ export default function SchemaPage() {
 
               {/* Add field button */}
               <Button variant="outline" onClick={handleAddField} className="w-full">
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-4 h-4" />
                 Add field
               </Button>
             </div>
@@ -297,8 +307,10 @@ function FieldRow({
   onUpdate: (updates: Partial<SchemaField>) => void;
   onRemove: () => void;
 }) {
+  const [descFocused, setDescFocused] = useState(false);
+
   return (
-    <div className="grid grid-cols-[auto_1fr_120px_80px_1fr_1fr_auto] gap-3 items-center p-3 rounded-lg border border-[var(--border)] bg-[var(--card)]">
+    <div className={`grid gap-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--card)] transition-all duration-200 ${descFocused ? 'grid-cols-[auto_1fr_120px_80px_1fr_auto] grid-rows-[auto_auto]' : 'grid-cols-[auto_1fr_120px_80px_1fr_1fr_auto] items-center'}`}>
       <div className="cursor-grab text-[var(--muted-foreground)]">
         <GripVertical className="w-4 h-4" />
       </div>
@@ -328,23 +340,61 @@ function FieldRow({
         />
       </div>
 
-      <Input
-        value={field.description}
-        onChange={(e) => onUpdate({ description: e.target.value })}
-        placeholder="Description"
-        className="text-sm h-9"
-      />
+      {descFocused ? (
+        <Textarea
+          value={field.description}
+          onChange={(e) => onUpdate({ description: e.target.value })}
+          onBlur={() => setDescFocused(false)}
+          placeholder="Description"
+          className="text-sm min-h-[60px] resize-none transition-all duration-200"
+          autoFocus
+          rows={2}
+        />
+      ) : (
+        <Input
+          value={field.description}
+          onChange={(e) => onUpdate({ description: e.target.value })}
+          onFocus={() => setDescFocused(true)}
+          placeholder="Description"
+          className="text-sm h-9 truncate"
+        />
+      )}
 
-      <Input
-        value={field.example}
-        onChange={(e) => onUpdate({ example: e.target.value })}
-        placeholder="Example value"
-        className="text-sm h-9"
-      />
+      {!descFocused && (
+        <Input
+          value={field.example}
+          onChange={(e) => onUpdate({ example: e.target.value })}
+          placeholder={
+            field.type === 'number' ? 'e.g., 720' :
+            field.type === 'boolean' ? 'true / false' :
+            field.type === 'enum' ? 'e.g., option_a' :
+            field.type === 'date' ? 'e.g., 2025-01-15' :
+            'e.g., sample text'
+          }
+          className="text-sm h-9"
+        />
+      )}
 
       <Button variant="ghost" size="icon" onClick={onRemove} className="text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
         <Trash2 className="w-4 h-4" />
       </Button>
+
+      {descFocused && (
+        <div className="col-start-2 col-span-4">
+          <Input
+            value={field.example}
+            onChange={(e) => onUpdate({ example: e.target.value })}
+            placeholder={
+              field.type === 'number' ? 'e.g., 720' :
+              field.type === 'boolean' ? 'true / false' :
+              field.type === 'enum' ? 'e.g., option_a' :
+              field.type === 'date' ? 'e.g., 2025-01-15' :
+              'e.g., sample text'
+            }
+            className="text-sm h-9"
+          />
+        </div>
+      )}
     </div>
   );
 }

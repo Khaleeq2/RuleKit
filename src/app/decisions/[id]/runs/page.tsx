@@ -117,20 +117,20 @@ export default function DecisionRunsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--foreground)]">Runs</h2>
-          <p className="text-sm text-[var(--muted-foreground)] mt-1">
+          <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">Runs</h2>
+          <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
             Execution history for this decision
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="w-4 h-4 mr-2" />
+            <RefreshCw className="w-4 h-4" />
             Refresh
           </Button>
           <Button variant="outline" size="sm" asChild>
             <Link href="/runs">
               View all runs
-              <ExternalLink className="w-4 h-4 ml-2" />
+              <ExternalLink className="w-4 h-4" />
             </Link>
           </Button>
         </div>

@@ -8,7 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Home,
   ShieldCheck,
-  Play,
+  History,
   Settings,
   LogOut,
   User,
@@ -48,7 +48,7 @@ import { CreditBalance } from '@/app/lib/types';
 const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: Home, href: '/home' },
   { id: 'decisions', label: 'Rules', icon: ShieldCheck, href: '/decisions' },
-  { id: 'history', label: 'History', icon: Play, href: '/history' },
+  { id: 'history', label: 'History', icon: History, href: '/history' },
 ] as const;
 
 // ============================================
@@ -123,7 +123,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 priority
               />
             </div>
-            <span className="text-[15px] font-semibold text-[var(--foreground)] tracking-tight">
+            <span className="text-[18px] font-semibold text-[var(--foreground)] tracking-tight">
               RuleKit
             </span>
           </Link>
@@ -216,7 +216,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                         transition-all duration-150
                         ${sidebarExpanded ? 'px-3' : 'justify-center'}
                         ${isActive
-                          ? 'bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)] shadow-[0_1px_2px_0_rgb(0_0_0/0.06)]'
+                          ? 'bg-[var(--brand)]/8 text-[var(--brand)] border border-[var(--brand)]/15 shadow-[0_1px_2px_0_rgb(0_0_0/0.04)]'
                           : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]/70'
                         }
                       `}
@@ -245,7 +245,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             </nav>
 
             {/* Bottom: User Menu */}
-            <div className="px-2.5 py-3">
+            <div className="px-2.5 pt-3 pb-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className={`flex items-center w-full p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors ${sidebarExpanded ? 'gap-2.5' : 'justify-center'}`}>
@@ -257,7 +257,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                     )}
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" side="right" className="w-52">
+                <DropdownMenuContent align="end" side="right" sideOffset={8} className="w-52">
                   <DropdownMenuItem onClick={() => router.push('/settings')}>
                     <User className="w-4 h-4 mr-2" />
                     Profile

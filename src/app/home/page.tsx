@@ -1,36 +1,33 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import TextareaAutosize from 'react-textarea-autosize';
 import { motion, AnimatePresence } from 'motion/react';
-import { usePanelCallbackRef } from 'react-resizable-panels';
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/app/components/ui/resizable';
 import {
   Plus,
   ArrowUp,
-  ArrowRight,
-  Clock,
-  Zap,
   GitBranch,
-  CheckCircle2,
-  XCircle,
-  X,
   Loader2,
-  ChevronRight,
-  PanelRightOpen,
-  PanelRightClose,
-  Check,
   Paperclip,
+  ShieldCheck,
+  ShieldAlert,
+  MessageSquare,
+  ChevronRight,
+  Lightbulb,
+  Upload,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
-import { decisionsRepo } from '@/app/lib/decisions';
+import { RuleResultCard, EvaluationSkeleton } from '@/app/components/RuleResultCard';
+import { ComparisonCard } from '@/app/components/ComparisonCard';
+import MarkdownContent from '@/app/components/MarkdownContent';
+import { decisionsRepo, rulesRepo } from '@/app/lib/decisions';
 import { DecisionWithStats } from '@/app/lib/types';
+import type { EvaluateResponse, EvaluationResult } from '@/app/lib/evaluation-types';
+import { sessionsRepo, type Session, type SessionMessage } from '@/app/lib/sessions';
+import { formatRelativeTime } from '@/app/lib/time-utils';
 import { toast } from 'sonner';
 
 // Types for the execution flow
@@ -51,6 +48,7 @@ interface ExecutionResult {
   latencyMs: number;
   credits: number;
   timestamp: Date;
+  evaluation?: EvaluationResult;
 }
 
 interface Message {
@@ -59,7 +57,25 @@ interface Message {
   content: string;
   timestamp: Date;
   execution?: ExecutionResult;
+  isStreaming?: boolean;
 }
+
+// Contextual prompt suggestions keyed by decision ID
+interface PromptSuggestion { title: string; content: string; }
+const PROMPT_SUGGESTIONS: Record<string, PromptSuggestion[]> = {
+  'decision-1': [
+    { title: 'Good credit check', content: 'Credit score 650, annual income $45,000, requesting $20,000 loan, employed full-time' },
+    { title: 'No credit history', content: 'Self-employed applicant, no credit history, income $80,000' },
+    { title: 'Bad credit loan', content: 'I want to apply for a loan with bad credit' },
+  ],
+  'decision-2': [
+    { title: 'Suspicious purchase', content: 'Transaction: $3,200 purchase from unusual IP at 3:00 AM' },
+    { title: 'International wire', content: 'Wire transfer of $15,000 to a new international account' },
+  ],
+};
+const DEFAULT_SUGGESTIONS: PromptSuggestion[] = [
+  { title: 'Paste your data', content: 'Paste your input data here to check against the selected rules' },
+];
 
 export default function HomePage() {
   const [decisions, setDecisions] = useState<DecisionWithStats[]>([]);
@@ -68,40 +84,80 @@ export default function HomePage() {
   const [isRunning, setIsRunning] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentExecution, setCurrentExecution] = useState<ExecutionResult | null>(null);
-  const [isResultsOpen, setIsResultsOpen] = useState(false);
-  const [resultsPanelRef, setResultsPanelRef] = usePanelCallbackRef();
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [recentSessions, setRecentSessions] = useState<Session[]>([]);
+  const [activeRuleNames, setActiveRuleNames] = useState<string[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastEvaluationRef = useRef<EvaluationResult | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const busyLockRef = useRef(false);
+  const titleGeneratedRef = useRef(false);
+  const forceEvaluateRef = useRef(false);
 
   const CONTENT_MAX_W = 800;
-  const RESULTS_DEFAULT_PCT = '35%';
-  const RESULTS_MIN_PCT = '25%';
-  const RESULTS_MAX_PCT = '55%';
 
-  const collapseResults = useCallback(() => {
-    setIsResultsOpen(false);
-    resultsPanelRef?.collapse();
-  }, [resultsPanelRef]);
+  // Load session by ID — extracted so it can be called from both URL param and recent session cards
+  const loadSessionById = async (id: string) => {
+    const session = await sessionsRepo.getById(id);
+    if (!session) {
+      toast.error('Session not found');
+      return;
+    }
 
-  const openResults = useCallback(() => {
-    setIsResultsOpen(true);
-    resultsPanelRef?.expand();
-    resultsPanelRef?.resize(RESULTS_DEFAULT_PCT);
-  }, [resultsPanelRef]);
+    const loadedMessages: Message[] = session.messages.map(sm => {
+      const msg: Message = {
+        id: sm.id,
+        type: sm.type,
+        content: sm.content,
+        timestamp: new Date(sm.timestamp),
+      };
 
-  const toggleResults = useCallback(() => {
-    if (isResultsOpen) collapseResults();
-    else openResults();
-  }, [isResultsOpen, collapseResults, openResults]);
+      if (sm.evaluation) {
+        const ev = sm.evaluation;
+        msg.execution = {
+          id: ev.id,
+          decisionName: session.decisionName,
+          input: ev.input || '',
+          verdict: ev.verdict,
+          reason: ev.reason,
+          rules: ev.evaluations.map(e => ({
+            id: e.rule_id,
+            name: e.rule_name,
+            status: e.verdict === 'pass' ? 'passed' as const : 'failed' as const,
+            message: e.reason,
+          })),
+          latencyMs: ev.latency_ms,
+          credits: 1,
+          timestamp: new Date(sm.timestamp),
+          evaluation: ev,
+        };
+        lastEvaluationRef.current = ev;
+      }
 
-  // Load decisions
+      return msg;
+    });
+
+    setSelectedDecision(session.decisionId);
+    setSessionId(session.id);
+    setMessages(loadedMessages);
+    titleGeneratedRef.current = true; // Existing session already has a title
+    // Move focus to composer after session loads
+    setTimeout(() => textareaRef.current?.focus(), 100);
+  };
+
+  // Load decisions + recent sessions
   useEffect(() => {
     const loadData = async () => {
       try {
-        const decisionsData = await decisionsRepo.listWithStats();
+        const [decisionsData, sessionsData] = await Promise.all([
+          decisionsRepo.listWithStats(),
+          sessionsRepo.list(),
+        ]);
         setDecisions(decisionsData);
+        setRecentSessions(sessionsData.slice(0, 3));
         if (decisionsData.length > 0 && !selectedDecision) {
           setSelectedDecision(decisionsData[0].id);
         }
@@ -112,108 +168,385 @@ export default function HomePage() {
     loadData();
   }, []);
 
+  // Migrate sessions with raw-input titles → AI titles (one-time background)
+  useEffect(() => {
+    const migrateTitles = async () => {
+      const needsTitles = await sessionsRepo.listNeedingTitles();
+      for (const s of needsTitles) {
+        // Skip the active session — auto-save handles its title via titleGeneratedRef
+        if (s.id === sessionId) continue;
+        const firstUser = s.messages.find(m => m.type === 'user')?.content;
+        const verdict = s.messages.find(m => m.evaluation)?.evaluation?.verdict ?? null;
+        if (!firstUser) continue;
+        try {
+          const res = await fetch('/api/title', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userMessage: firstUser, decisionName: s.decisionName, verdict }),
+          });
+          const data = await res.json();
+          if (data.success && data.title) {
+            await sessionsRepo.updateTitle(s.id, data.title);
+          }
+        } catch { /* skip failed titles */ }
+      }
+      if (needsTitles.length > 0) {
+        const fresh = await sessionsRepo.list();
+        setRecentSessions(fresh.slice(0, 3));
+      }
+    };
+    migrateTitles();
+  }, []);
+
+  // Load session from URL query parameter (e.g., /home?session=abc)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionParam = params.get('session');
+    if (!sessionParam) return;
+    loadSessionById(sessionParam).catch(console.error);
+  }, []);
+
   // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Simulate streaming rule checks
-  const simulateExecution = async (input: string, decisionId: string): Promise<ExecutionResult> => {
-    const decision = decisions.find(d => d.id === decisionId);
-    const decisionName = decision?.name || 'Unknown Decision';
-    
-    // Create mock rules to check
-    const mockRules: RuleCheck[] = [
-      { id: '1', name: 'Input Validation', status: 'pending' },
-      { id: '2', name: 'Schema Check', status: 'pending' },
-      { id: '3', name: 'Business Logic', status: 'pending' },
-      { id: '4', name: 'Final Verdict', status: 'pending' },
-    ];
+  // Auto-save session when messages change
+  useEffect(() => {
+    if (messages.length === 0 || isStreaming) return;
 
-    const execution: ExecutionResult = {
-      id: `exec-${Date.now()}`,
-      decisionName,
-      input,
-      verdict: 'pass',
-      reason: '',
-      rules: [...mockRules],
-      latencyMs: 0,
-      credits: 1,
-      timestamp: new Date(),
+    const saveSession = async () => {
+      const sessionMessages: SessionMessage[] = messages.map(m => ({
+        id: m.id,
+        type: m.type,
+        content: m.content,
+        timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : String(m.timestamp),
+        evaluation: m.execution?.evaluation,
+      }));
+
+      const decision = decisions.find(d => d.id === selectedDecision);
+      const decisionName = decision?.name || 'Unknown';
+
+      let currentSessionId = sessionId;
+      if (sessionId) {
+        await sessionsRepo.update(sessionId, sessionMessages);
+      } else {
+        const session = await sessionsRepo.create(
+          selectedDecision,
+          decisionName,
+          sessionMessages
+        );
+        setSessionId(session.id);
+        currentSessionId = session.id;
+      }
+
+      // Generate AI title after first evaluation (background, fire-and-forget)
+      const hasEval = sessionMessages.some(m => m.evaluation);
+      const firstUserMsg = sessionMessages.find(m => m.type === 'user')?.content;
+      if (hasEval && firstUserMsg && !titleGeneratedRef.current && currentSessionId) {
+        titleGeneratedRef.current = true;
+        const verdict = sessionMessages.find(m => m.evaluation)?.evaluation?.verdict ?? null;
+        fetch('/api/title', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userMessage: firstUserMsg, decisionName, verdict }),
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success && data.title) {
+              sessionsRepo.updateTitle(currentSessionId!, data.title);
+              // Refresh recent sessions so new title appears
+              sessionsRepo.list().then(s => setRecentSessions(s.slice(0, 3)));
+            }
+          })
+          .catch(() => {}); // Fail silently — template title remains
+      }
     };
 
-    setCurrentExecution(execution);
-    openResults();
+    saveSession().catch(console.error);
+  }, [messages, isStreaming]);
 
-    const startTime = Date.now();
+  // Run real evaluation via Groq API
+  const runEvaluation = async (input: string, decisionId: string): Promise<ExecutionResult> => {
+    const decision = decisions.find(d => d.id === decisionId);
+    const decisionName = decision?.name || 'Unknown Decision';
 
-    // Simulate each rule check with streaming effect
-    for (let i = 0; i < mockRules.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
-      
-      const passed = Math.random() > 0.15; // 85% pass rate per rule
-      execution.rules[i] = {
-        ...execution.rules[i],
-        status: passed ? 'passed' : 'failed',
-        message: passed ? 'Validation successful' : 'Check failed - criteria not met',
-      };
-      
-      if (!passed && i < mockRules.length - 1) {
-        execution.verdict = 'fail';
-      }
-      
-      // Mark next rule as running
-      if (i < mockRules.length - 1) {
-        execution.rules[i + 1] = { ...execution.rules[i + 1], status: 'running' };
-      }
-      
-      setCurrentExecution({ ...execution });
+    // Fetch real rules for this decision
+    const decisionRules = await rulesRepo.listByDecisionId(decisionId);
+    const enabledRules = decisionRules.filter(r => r.enabled);
+
+    if (enabledRules.length === 0) {
+      throw new Error('No active rules found for this ruleset. Add rules in the Rules page first.');
     }
 
-    execution.latencyMs = Date.now() - startTime;
-    execution.verdict = execution.rules.every(r => r.status === 'passed') ? 'pass' : 'fail';
-    execution.reason = execution.verdict === 'pass' 
-      ? 'All checks passed — approved to proceed.'
-      : 'One or more checks flagged — held for review.';
+    // Store rule names for the loading skeleton
+    setActiveRuleNames(enabledRules.map(r => r.name));
 
-    return execution;
+    // Call the Groq evaluation API
+    const evaluatorRules = enabledRules.map(r => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      reason: r.reason,
+    }));
+
+    const res = await fetch('/api/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input,
+        decision_id: decisionId,
+        decision_name: decisionName,
+        rules: evaluatorRules,
+      }),
+    });
+
+    const data: EvaluateResponse = await res.json();
+
+    if (!data.success || !data.result) {
+      throw new Error(data.error || 'Evaluation failed');
+    }
+
+    const result = data.result;
+
+    // Map evaluations to RuleCheck format
+    const ruleChecks: RuleCheck[] = result.evaluations.map(e => ({
+      id: e.rule_id,
+      name: e.rule_name,
+      status: e.verdict === 'pass' ? 'passed' as const : 'failed' as const,
+      message: e.reason,
+    }));
+
+    return {
+      id: result.id,
+      decisionName,
+      input,
+      verdict: result.verdict,
+      reason: result.reason,
+      rules: ruleChecks,
+      latencyMs: result.latency_ms,
+      credits: 1,
+      timestamp: new Date(),
+      evaluation: result,
+    };
   };
 
-  // Handle run
+  // Stream a follow-up chat response
+  const streamChat = async (userContent: string) => {
+    const decision = decisions.find(d => d.id === selectedDecision);
+    const msgId = `msg-${crypto.randomUUID()}`;
+
+    // Build conversation history from messages (only user/system text, not evaluation cards)
+    const chatHistory = messages
+      .filter(m => m.content && !m.execution)
+      .map(m => ({
+        role: m.type === 'user' ? 'user' as const : 'assistant' as const,
+        content: m.content,
+      }));
+
+    chatHistory.push({ role: 'user', content: userContent });
+
+    // Build evaluation context if available
+    const evalCtx = lastEvaluationRef.current;
+    const context = evalCtx ? {
+      decision_name: decision?.name || 'Unknown',
+      last_evaluation: {
+        verdict: evalCtx.verdict,
+        reason: evalCtx.reason,
+        evaluations: evalCtx.evaluations.map(e => ({
+          rule_name: e.rule_name,
+          verdict: e.verdict,
+          reason: e.reason,
+        })),
+      },
+    } : undefined;
+
+    // Add placeholder streaming message
+    const streamingMsg: Message = {
+      id: msgId,
+      type: 'system',
+      content: '',
+      timestamp: new Date(),
+      isStreaming: true,
+    };
+    setMessages(prev => [...prev, streamingMsg]);
+    setIsStreaming(true);
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: chatHistory, context }),
+        signal: abortController.signal,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Chat request failed' }));
+        throw new Error(errorData.error || 'Chat request failed');
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No response stream');
+
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === 'data: [DONE]') continue;
+          if (!trimmed.startsWith('data: ')) continue;
+
+          try {
+            const json = JSON.parse(trimmed.slice(6));
+            if (json.content) {
+              accumulated += json.content;
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === msgId ? { ...m, content: accumulated } : m
+                )
+              );
+            }
+          } catch {
+            // Skip malformed chunks
+          }
+        }
+      }
+
+      // Finalize — remove streaming flag
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === msgId ? { ...m, isStreaming: false } : m
+        )
+      );
+    } catch (error: any) {
+      if (error.name === 'AbortError') return;
+
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === msgId
+            ? { ...m, content: error.message || 'Failed to get response.', isStreaming: false }
+            : m
+        )
+      );
+      toast.error(error.message || 'Chat failed');
+    } finally {
+      setIsStreaming(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  // Heuristic: does the input look like data to evaluate (JSON, long text) vs a question?
+  const looksLikeData = (input: string): boolean => {
+    const trimmed = input.trim();
+    // JSON-like
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) return true;
+    // Very long input (>200 chars) is probably data, not a question
+    if (trimmed.length > 200) return true;
+    return false;
+  };
+
+  // Determine if this is a follow-up question or a new evaluation
+  const hasEvaluation = lastEvaluationRef.current !== null;
+
+  // Handle run — routes between evaluate (new input) and chat (follow-up)
   const handleRun = async () => {
-    if (!selectedDecision || !runInput.trim()) {
-      toast.error('Select a ruleset and provide input to review');
+    // Ref-based lock prevents double-fire (state checks are stale in closures)
+    if (busyLockRef.current) return;
+    if (!runInput.trim()) {
+      toast.error('Enter some input first');
       return;
     }
 
+    busyLockRef.current = true;
+
+    const content = runInput.trim();
     const userMessage: Message = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${crypto.randomUUID()}`,
       type: 'user',
-      content: runInput,
+      content,
       timestamp: new Date(),
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     setRunInput('');
+
+    // Route: if we have an evaluation and the input looks like a question, stream chat
+    // Otherwise, run a new evaluation. forceEvaluateRef bypasses chat routing (e.g. retry flow).
+    const isFollowUp = hasEvaluation && !looksLikeData(content) && !forceEvaluateRef.current;
+    forceEvaluateRef.current = false;
+
+    if (isFollowUp) {
+      try {
+        await streamChat(content);
+      } finally {
+        busyLockRef.current = false;
+      }
+      return;
+    }
+
+    if (!selectedDecision) {
+      toast.error('Select a ruleset first');
+      return;
+    }
+
     setIsRunning(true);
 
     try {
-      const execution = await simulateExecution(userMessage.content, selectedDecision);
-      
+      const execution = await runEvaluation(content, selectedDecision);
+
+      // Track the latest evaluation for follow-up context
+      if (execution.evaluation) {
+        lastEvaluationRef.current = execution.evaluation;
+      }
+
       const systemMessage: Message = {
-        id: `msg-${Date.now()}`,
+        id: `msg-${crypto.randomUUID()}`,
         type: 'system',
         content: execution.reason,
         timestamp: new Date(),
         execution,
       };
-      
+
       setMessages(prev => [...prev, systemMessage]);
-      setCurrentExecution(execution);
     } catch (error: any) {
-      toast.error(error.message || 'Execution failed');
+      const msg = error.message || '';
+      const isNoRules = msg.includes('No active rules');
+      const isApiKey = msg.includes('API') || msg.includes('key') || msg.includes('401');
+      const isTimeout = msg.includes('timeout') || msg.includes('abort');
+
+      const userFriendly = isNoRules
+        ? 'No active rules found for this ruleset. Go to the Rules page and add at least one enabled rule.'
+        : isApiKey
+        ? 'API configuration issue. Check that your GROQ_API_KEY is set in .env.local and restart the server.'
+        : isTimeout
+        ? 'The evaluation timed out. Try with shorter input or fewer rules.'
+        : msg || 'Evaluation failed. Please try again.';
+
+      const errorMessage: Message = {
+        id: `msg-${crypto.randomUUID()}`,
+        type: 'system',
+        content: userFriendly,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      toast.error(isNoRules ? 'No rules configured' : isApiKey ? 'API error' : 'Evaluation failed', {
+        description: userFriendly,
+      });
     } finally {
       setIsRunning(false);
+      busyLockRef.current = false;
     }
   };
 
@@ -225,304 +558,308 @@ export default function HomePage() {
     }
   };
 
+  // Start a fresh session — resets all conversational state
+  const startNewSession = async () => {
+    setMessages([]);
+    setSessionId(null);
+    setRunInput('');
+    lastEvaluationRef.current = null;
+    busyLockRef.current = false;
+    titleGeneratedRef.current = false;
+    window.history.replaceState(null, '', '/home');
+    // Refresh recent sessions so the just-completed session appears
+    const fresh = await sessionsRepo.list();
+    setRecentSessions(fresh.slice(0, 3));
+  };
+
   const hasMessages = messages.length > 0;
+  const isBusy = isRunning || isStreaming;
 
   return (
-    <div className="h-full flex flex-col relative overflow-hidden">
-      <ResizablePanelGroup
-        orientation="horizontal"
-        className="flex-1 !overflow-hidden"
-      >
-        {/* Main Content Panel */}
-        <ResizablePanel
-          id="main"
-          minSize="45%"
-        >
-          <div className="h-full flex flex-col">
+    <div className="h-full relative overflow-hidden">
+      {hasMessages ? (
+        /* ── Chat view: transparent top bar + masked scroll + solid bottom ── */
+        <>
+          {/* Top bar — fully transparent, button floats over content */}
+          <div className="absolute top-0 left-0 right-0 z-10 px-5 pt-2.5 pointer-events-none">
+            <button
+              onClick={startNewSession}
+              className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--brand)] bg-[var(--card)] border border-[var(--border)] shadow-sm hover:shadow-md hover:border-[var(--brand)]/30 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New check
+            </button>
+          </div>
 
-            {/* Content-level context: pill toggle + results panel button */}
-            <div className="flex items-center justify-between px-6 pt-8 pb-2">
-              <div className="w-8" />
-              <div className="flex items-center bg-[var(--surface-elevated)] border border-[var(--border)] rounded-full p-1">
-                <button
-                  className="px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-[var(--brand)] text-white"
-                >
-                  Decide
-                </button>
-                <Link
-                  href="/decisions"
-                  className="px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                >
-                  Rules
-                </Link>
-              </div>
-              <div className="w-8 flex justify-end">
-                {currentExecution && (
-                  <button
-                    onClick={toggleResults}
-                    className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors"
-                    title={isResultsOpen ? 'Hide results' : 'Show results'}
+          {/* Scrollable messages — mask-image fades content at top and bottom edges */}
+          <div
+            className="h-full overflow-y-auto pt-12 pb-28"
+            style={{
+              maskImage: 'linear-gradient(to bottom, transparent, black 48px, black calc(100% - 140px), transparent)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 48px, black calc(100% - 140px), transparent)',
+            }}
+          >
+            <div className="p-6">
+              <div className="mx-auto w-full space-y-4" style={{ maxWidth: CONTENT_MAX_W }}>
+                <AnimatePresence mode="popLayout">
+                  {messages.map((message, messageIndex) => {
+                    const currentEval = message.execution?.evaluation;
+                    let previousEval: EvaluationResult | null = null;
+                    if (currentEval) {
+                      for (let i = messageIndex - 1; i >= 0; i--) {
+                        if (messages[i].execution?.evaluation) {
+                          previousEval = messages[i].execution!.evaluation!;
+                          break;
+                        }
+                      }
+                    }
+
+                    return (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={message.type === 'user' ? 'max-w-[85%]' : 'w-full'}>
+                          {message.type === 'user' ? (
+                            <div className="bg-[var(--surface-elevated)] border border-[var(--border)] rounded-2xl rounded-br-sm px-4 py-3">
+                              <p className="text-sm whitespace-pre-wrap text-[var(--foreground)]">{message.content}</p>
+                            </div>
+                          ) : currentEval ? (
+                            <div className="space-y-4">
+                              <RuleResultCard
+                                result={currentEval}
+                                onRetry={(previousInput) => {
+                                  forceEvaluateRef.current = true;
+                                  setRunInput(previousInput);
+                                  setTimeout(() => {
+                                    const ta = textareaRef.current;
+                                    if (ta) { ta.focus(); ta.select(); }
+                                  }, 100);
+                                }}
+                              />
+                              {previousEval && (
+                                <ComparisonCard previous={previousEval} current={currentEval} />
+                              )}
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl rounded-bl-sm px-4 py-3">
+                              <MarkdownContent content={message.content} />
+                              {message.isStreaming && (
+                                <span className="inline-block w-1.5 h-4 bg-[var(--brand)] rounded-full animate-pulse ml-0.5 align-text-bottom" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+
+                {/* Loading skeleton — appears while Groq evaluates */}
+                {isRunning && <EvaluationSkeleton ruleNames={activeRuleNames} />}
+
+                {/* Recovery prompt — appears after a failed evaluation */}
+                {!isBusy && lastEvaluationRef.current?.verdict === 'fail' && messages.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.3 }}
+                    className="flex justify-start"
                   >
-                    {isResultsOpen ? (
-                      <PanelRightClose className="w-4 h-4" />
-                    ) : (
-                      <PanelRightOpen className="w-4 h-4" />
-                    )}
-                  </button>
+                    <button
+                      onClick={() => setRunInput('What specific data do I need to provide to pass each rule?')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/15 border border-amber-200/60 dark:border-amber-800/30 hover:bg-amber-100 dark:hover:bg-amber-900/25 focus-visible:ring-2 focus-visible:ring-[var(--brand)]/30 focus-visible:ring-offset-1 transition-colors"
+                    >
+                      <Lightbulb className="w-3 h-3" />
+                      What data do I need to pass?
+                    </button>
+                  </motion.div>
                 )}
+
+                <div ref={messagesEndRef} />
               </div>
             </div>
+          </div>
 
-            {/* Messages Area or Empty State */}
-            <div className="flex-1 overflow-y-auto">
-              {!hasMessages ? (
-                <div className="h-full flex flex-col items-center px-6 pt-[8vh]">
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                    className="w-full space-y-10"
-                    style={{ maxWidth: CONTENT_MAX_W }}
-                  >
-                    {/* Hero - Statement only, no icon */}
-                    <div className="text-center space-y-3">
-                      <h1 className="text-4xl font-semibold text-[var(--foreground)] tracking-tight leading-[1.1]">
-                        What are you checking today?
-                      </h1>
-                      <p className="text-[var(--muted-foreground)] text-[15px]">
-                        Submit text, documents, or files to be reviewed against your rules
-                      </p>
-                    </div>
+          {/* Bottom composer — solid background, mask handles the visual transition above */}
+          <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pt-3 pb-6 bg-[var(--background)]">
+            <div className="mx-auto" style={{ maxWidth: CONTENT_MAX_W }}>
+              <SuperInput
+                value={runInput}
+                onChange={setRunInput}
+                onSubmit={handleRun}
+                onKeyDown={handleKeyDown}
+                isFocused={isFocused}
+                setIsFocused={setIsFocused}
+                isRunning={isBusy}
+                decisions={decisions}
+                selectedDecision={selectedDecision}
+                setSelectedDecision={setSelectedDecision}
+                textareaRef={textareaRef}
+                minRows={1}
+                showDecisionSelector={false}
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        /* ── Empty state: normal flex layout ── */
+        <div className="h-full flex flex-col">
+          <div className="flex items-center justify-center px-6 pt-4 pb-2">
+            <div className="flex items-center bg-[var(--surface-elevated)] border border-[var(--border)] rounded-full p-1" role="tablist" aria-label="Mode">
+              <button
+                role="tab"
+                aria-selected="true"
+                aria-current="page"
+                className="px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-[var(--brand)] text-white cursor-default"
+              >
+                Decide
+              </button>
+              <Link
+                href="/decisions"
+                role="tab"
+                aria-selected="false"
+                className="px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              >
+                Rules
+              </Link>
+            </div>
+          </div>
 
-                    {/* Super Input Box */}
-                    <SuperInput
-                      value={runInput}
-                      onChange={setRunInput}
-                      onSubmit={handleRun}
-                      onKeyDown={handleKeyDown}
-                      isFocused={isFocused}
-                      setIsFocused={setIsFocused}
-                      isRunning={isRunning}
-                      decisions={decisions}
-                      selectedDecision={selectedDecision}
-                      setSelectedDecision={setSelectedDecision}
-                      textareaRef={textareaRef}
-                      minRows={4}
-                    />
+          <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="min-h-full flex flex-col items-center px-6 pb-6">
+              {/* Top spacer — pushes action area toward vertical center */}
+              <div className="flex-1" />
 
-                    {/* Keyboard hint */}
-                    <p className="text-center text-xs text-[var(--muted-foreground)]/60">
-                      <kbd className="px-1.5 py-0.5 bg-[var(--muted)] rounded text-[10px] font-mono text-[var(--muted-foreground)]">Enter</kbd>
-                      <span className="ml-1.5 text-[var(--muted-foreground)]/40">to submit</span>
-                    </p>
-                  </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="w-full space-y-6"
+                style={{ maxWidth: CONTENT_MAX_W }}
+              >
+                {/* Hero */}
+                <div className="text-center space-y-4">
+                  <h1 className="text-4xl font-semibold text-[var(--foreground)] tracking-tight leading-[1.1]">
+                    What are you checking today?
+                  </h1>
+                  <p className="text-[var(--muted-foreground)] text-[15px]">
+                    AI evaluates your input against each rule and explains its reasoning
+                  </p>
                 </div>
-              ) : (
-                <div className="p-6">
-                  <div className="mx-auto w-full space-y-4" style={{ maxWidth: CONTENT_MAX_W }}>
-                    <AnimatePresence mode="popLayout">
-                      {messages.map((message) => (
-                        <motion.div
-                          key={message.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.2 }}
-                          className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+
+                {/* Super Input Box */}
+                <SuperInput
+                  value={runInput}
+                  onChange={setRunInput}
+                  onSubmit={handleRun}
+                  onKeyDown={handleKeyDown}
+                  isFocused={isFocused}
+                  setIsFocused={setIsFocused}
+                  isRunning={isBusy}
+                  decisions={decisions}
+                  selectedDecision={selectedDecision}
+                  setSelectedDecision={setSelectedDecision}
+                  textareaRef={textareaRef}
+                  minRows={4}
+                />
+
+                {/* Suggested prompts — short titles, full content fills on click */}
+                {(() => {
+                  const suggestions = PROMPT_SUGGESTIONS[selectedDecision] || DEFAULT_SUGGESTIONS;
+                  return (
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-[11px] text-[var(--muted-foreground)]">Try:</span>
+                      {suggestions.map((s, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setRunInput(s.content)}
+                          aria-label={`Fill input with: ${s.content}`}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--muted-foreground)]/40 hover:bg-[var(--muted)]/40 focus-visible:ring-2 focus-visible:ring-[var(--brand)]/30 focus-visible:ring-offset-1 transition-all"
                         >
-                          <div className={`max-w-[85%] ${message.type === 'user' ? 'order-1' : ''}`}>
-                            {message.type === 'user' ? (
-                              <div className="bg-[var(--surface-elevated)] border border-[var(--border)] rounded-2xl rounded-br-sm px-4 py-3">
-                                <p className="text-sm whitespace-pre-wrap text-[var(--foreground)]">{message.content}</p>
+                          {s.title}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </motion.div>
+
+              {/* Flexible gap — adapts to screen height, min 32px */}
+              <div className="flex-1 min-h-8" />
+
+              {/* Recent sessions — visually separated section */}
+              {recentSessions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.4 }}
+                  className="w-full space-y-2"
+                  style={{ maxWidth: CONTENT_MAX_W }}
+                >
+                  <p className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide text-center">Recent</p>
+                  <div className="grid gap-2 px-1 pb-1 -mx-1 -mb-1">
+                    {recentSessions.map(s => {
+                      const reason = s.messages.find(m => m.evaluation)?.evaluation?.reason;
+                      const verdictLabel = s.verdict === 'pass' ? 'Passed' : s.verdict === 'fail' ? 'Failed' : 'Pending';
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => loadSessionById(s.id)}
+                          aria-label={`Load session: ${s.title} — ${verdictLabel}`}
+                          className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl overflow-hidden bg-[var(--card)] border border-[var(--border)] shadow-sm hover:shadow-md hover:border-[var(--muted-foreground)]/25 hover:bg-[var(--muted)]/30 hover:-translate-y-[1px] focus-visible:ring-2 focus-visible:ring-[var(--brand)]/30 focus-visible:ring-offset-1 transition-all duration-200 text-left group"
+                        >
+                          <div className="flex-shrink-0" aria-hidden="true">
+                            {s.verdict === 'pass' ? (
+                              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                            ) : s.verdict === 'fail' ? (
+                              <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                                <ShieldAlert className="w-4 h-4 text-red-500 dark:text-red-400" />
                               </div>
                             ) : (
-                              <div className="space-y-1.5">
-                                <div className="rounded-2xl rounded-bl-sm px-4 py-3">
-                                  {message.execution && (
-                                    <div className="flex items-center gap-2 mb-2">
-                                      {message.execution.verdict === 'pass' ? (
-                                        <div className="flex items-center gap-1.5 text-[var(--success)]">
-                                          <CheckCircle2 className="w-4 h-4" />
-                                          <span className="text-sm font-medium">Passed</span>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-center gap-1.5 text-[var(--destructive)]">
-                                          <XCircle className="w-4 h-4" />
-                                          <span className="text-sm font-medium">Needs review</span>
-                                        </div>
-                                      )}
-                                      <span className="text-[var(--muted-foreground)]/50 text-xs">&middot;</span>
-                                      <span className="text-[var(--muted-foreground)] text-xs">{message.execution.latencyMs}ms</span>
-                                    </div>
-                                  )}
-                                  <p className="text-sm text-[var(--foreground)]/80">{message.content}</p>
-                                </div>
-                                {message.execution && !isResultsOpen && (
-                                  <button
-                                    onClick={() => {
-                                      setCurrentExecution(message.execution!);
-                                      openResults();
-                                    }}
-                                    className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors flex items-center gap-1 ml-1"
-                                  >
-                                    View check results
-                                    <ChevronRight className="w-3 h-3" />
-                                  </button>
-                                )}
+                              <div className="w-8 h-8 rounded-lg bg-[var(--muted)] flex items-center justify-center">
+                                <MessageSquare className="w-4 h-4 text-[var(--muted-foreground)]" />
                               </div>
                             )}
                           </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                    <div ref={messagesEndRef} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-[var(--foreground)] truncate">{s.title}</p>
+                            <p className="text-xs text-[var(--muted-foreground)] truncate mt-0.5">
+                              {s.decisionName}
+                              {reason && <> &middot; {reason}</>}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            <span className="text-[10px] text-[var(--muted-foreground)]">
+                              {formatRelativeTime(s.updatedAt).relative}
+                            </span>
+                            {s.verdict && (
+                              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                                s.verdict === 'pass'
+                                  ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                              }`}>
+                                {verdictLabel}
+                              </span>
+                            )}
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
+                </motion.div>
               )}
             </div>
-
-            {/* Bottom Composer (when has messages) */}
-            {hasMessages && (
-              <div className="p-4 pb-6">
-                <div className="mx-auto" style={{ maxWidth: CONTENT_MAX_W }}>
-                  <SuperInput
-                    value={runInput}
-                    onChange={setRunInput}
-                    onSubmit={handleRun}
-                    onKeyDown={handleKeyDown}
-                    isFocused={isFocused}
-                    setIsFocused={setIsFocused}
-                    isRunning={isRunning}
-                    decisions={decisions}
-                    selectedDecision={selectedDecision}
-                    setSelectedDecision={setSelectedDecision}
-                    textareaRef={textareaRef}
-                    minRows={1}
-                  />
-                </div>
-              </div>
-            )}
           </div>
-        </ResizablePanel>
-
-        {/* Results Panel */}
-        {currentExecution && (
-          <>
-            <ResizableHandle className="w-px bg-[var(--border)] hover:bg-[var(--brand)]/50 transition-colors data-[resize-handle-active]:bg-[var(--brand)] after:absolute after:inset-y-0 after:left-1/2 after:w-3 after:-translate-x-1/2" />
-            <ResizablePanel
-              id="results"
-              defaultSize={RESULTS_DEFAULT_PCT}
-              minSize={RESULTS_MIN_PCT}
-              maxSize={RESULTS_MAX_PCT}
-              collapsible
-              collapsedSize="0%"
-              panelRef={setResultsPanelRef}
-              onResize={(panelSize) => {
-                const collapsed = panelSize.asPercentage < 1;
-                if (collapsed !== !isResultsOpen) setIsResultsOpen(!collapsed);
-              }}
-            >
-              <div className="h-full flex flex-col border-l border-[var(--border)]">
-                {/* Panel Header */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)]/50">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      isRunning ? 'bg-[var(--warning)] animate-pulse' :
-                      currentExecution.verdict === 'pass' ? 'bg-[var(--success)]' : 'bg-[var(--destructive)]'
-                    }`} />
-                    <span className="font-medium text-sm text-[var(--foreground)]">
-                      {currentExecution.decisionName}
-                    </span>
-                  </div>
-                  <button
-                    onClick={collapseResults}
-                    className="p-1 hover:bg-[var(--muted)] rounded-md transition-colors text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Rule Checks */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-2">
-                  <p className="text-[10px] font-medium text-[var(--muted-foreground)] uppercase tracking-widest mb-4">
-                    Rule Checks
-                  </p>
-
-                  {currentExecution.rules.map((rule, index) => (
-                    <motion.div
-                      key={rule.id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.08 }}
-                      className={`
-                        flex items-center gap-3 px-3.5 py-3 rounded-lg transition-all
-                        ${rule.status === 'running' ? 'bg-[var(--brand)]/5' :
-                          rule.status === 'passed' ? 'bg-[var(--success)]/5' :
-                          rule.status === 'failed' ? 'bg-[var(--destructive)]/5' :
-                          'bg-transparent'
-                        }
-                      `}
-                    >
-                      <div className="flex-shrink-0">
-                        {rule.status === 'pending' && (
-                          <div className="w-5 h-5 rounded-full border-2 border-[var(--border)]" />
-                        )}
-                        {rule.status === 'running' && (
-                          <Loader2 className="w-5 h-5 text-[var(--brand)] animate-spin" />
-                        )}
-                        {rule.status === 'passed' && (
-                          <div className="w-5 h-5 rounded-full bg-[var(--success)] flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" />
-                          </div>
-                        )}
-                        {rule.status === 'failed' && (
-                          <div className="w-5 h-5 rounded-full bg-[var(--destructive)] flex items-center justify-center">
-                            <X className="w-3 h-3 text-white" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${
-                          rule.status === 'pending' ? 'text-[var(--muted-foreground)]' : 'text-[var(--foreground)]'
-                        }`}>
-                          {rule.name}
-                        </p>
-                        {rule.message && (
-                          <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{rule.message}</p>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Panel Footer */}
-                {!isRunning && (
-                  <div className="border-t border-[var(--border)]/50 px-5 py-3.5">
-                    <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-                      <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
-                          {currentExecution.latencyMs}ms
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <Zap className="w-3.5 h-3.5" />
-                          {currentExecution.credits} credit
-                        </span>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-7 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]" asChild>
-                        <Link href={`/decisions/${selectedDecision}`}>
-                          Full trace
-                          <ArrowRight className="w-3 h-3 ml-1" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ResizablePanel>
-          </>
-        )}
-      </ResizablePanelGroup>
+        </div>
+      )}
     </div>
   );
 }
@@ -543,6 +880,7 @@ interface SuperInputProps {
   setSelectedDecision: (id: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   minRows?: number;
+  showDecisionSelector?: boolean;
 }
 
 function SuperInput({
@@ -558,6 +896,7 @@ function SuperInput({
   setSelectedDecision,
   textareaRef,
   minRows = 1,
+  showDecisionSelector = true,
 }: SuperInputProps) {
   const canSubmit = !isRunning && !!selectedDecision && !!value.trim();
   const [isDragging, setIsDragging] = useState(false);
@@ -583,7 +922,37 @@ function SuperInput({
     e.preventDefault();
     dragCounter.current = 0;
     setIsDragging(false);
-    // TODO: wire up file handling
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    const textTypes = [
+      'application/json', 'text/plain', 'text/csv', 'text/xml',
+      'application/xml', 'text/html', 'text/markdown',
+    ];
+    const textExtensions = ['.json', '.txt', '.csv', '.xml', '.md', '.yaml', '.yml', '.tsv', '.log'];
+    const isText = textTypes.includes(file.type) || textExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+    if (!isText) {
+      toast.error(`${file.name} is not a supported text format`, {
+        description: 'Try JSON, CSV, TXT, XML, YAML, or Markdown files.',
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      if (content) {
+        onChange(content);
+        textareaRef.current?.focus();
+        toast.success(`Loaded ${file.name}`, { description: `${(file.size / 1024).toFixed(1)} KB` });
+      }
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read file');
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -593,16 +962,37 @@ function SuperInput({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       className={`
-        rounded-xl transition-all duration-300 ease-out overflow-hidden
+        relative rounded-xl transition-all duration-300 ease-out overflow-hidden
         bg-[var(--card)] border
         ${isDragging
-          ? 'border-[var(--brand)]/50 shadow-[var(--glow-brand)]'
+          ? 'border-[var(--brand)]/50 shadow-[var(--glow-brand)] scale-[1.01]'
           : isFocused
             ? 'border-[var(--brand)]/30 shadow-[var(--glow-brand)]'
             : 'border-[var(--border)] shadow-[var(--shadow-card)] hover:border-[var(--border)]/80'
         }
       `}
     >
+      {/* Drag-and-drop overlay */}
+      <AnimatePresence>
+        {isDragging && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-[var(--brand)]/[0.04] border-2 border-dashed border-[var(--brand)]/40"
+          >
+            <div className="w-10 h-10 rounded-full bg-[var(--brand)]/10 flex items-center justify-center">
+              <Upload className="w-5 h-5 text-[var(--brand)]" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-[var(--foreground)]">Drop your file here</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Instantly check against your rules</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Textarea - borderless, blank sheet feel */}
       <TextareaAutosize
         ref={textareaRef as any}
@@ -611,7 +1001,7 @@ function SuperInput({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         onKeyDown={onKeyDown}
-        placeholder="Paste text or drop a file to review..."
+        placeholder="Share the content to review, or drop a file here"
         minRows={minRows}
         maxRows={12}
         className="
@@ -624,33 +1014,47 @@ function SuperInput({
         spellCheck={false}
       />
 
+      {/* File format hints — visible only when empty + idle */}
+      {!value.trim() && !isFocused && !isDragging && (
+        <div className="flex items-center gap-1.5 px-5 pb-2">
+          <FileText className="w-3 h-3 text-[var(--muted-foreground)]/40" />
+          {['JSON', 'CSV', 'TXT', 'XML', 'YAML'].map(fmt => (
+            <span key={fmt} className="text-[10px] font-medium text-[var(--muted-foreground)]/40 px-1.5 py-0.5 rounded border border-[var(--border)]/40">
+              {fmt}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Action Bar */}
       <div className="flex items-center justify-between px-3 py-2.5 border-t border-[var(--border)]/40">
         <div className="flex items-center gap-1">
-          {/* Decision Selector */}
-          <Select value={selectedDecision} onValueChange={setSelectedDecision}>
-            <SelectTrigger className="w-auto h-8 rounded-lg px-3 gap-2 text-xs font-medium bg-[var(--muted)] hover:bg-[var(--secondary-hover)] border border-[var(--border)]/60 shadow-none transition-all focus:ring-0">
-              <GitBranch className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
-              <span className="max-w-[140px] truncate text-[var(--foreground)]">
-                {decisions.find(d => d.id === selectedDecision)?.name || "Select ruleset"}
-              </span>
-            </SelectTrigger>
-            <SelectContent align="start" className="min-w-[220px] bg-[var(--popover)] border-[var(--border)] shadow-xl">
-              {decisions.map((decision) => (
-                <SelectItem key={decision.id} value={decision.id}>
-                  {decision.name}
-                </SelectItem>
-              ))}
-              <div className="p-1 border-t border-[var(--border)] mt-1">
-                <Button variant="ghost" size="sm" className="w-full justify-start h-8 text-xs" asChild>
-                  <Link href="/decisions/new">
-                    <Plus className="w-3 h-3 mr-2" />
-                    New rule
-                  </Link>
-                </Button>
-              </div>
-            </SelectContent>
-          </Select>
+          {/* Decision Selector — full dropdown in empty state, static label in chat */}
+          {showDecisionSelector ? (
+            <Select value={selectedDecision} onValueChange={setSelectedDecision}>
+              <SelectTrigger className="w-auto h-8 rounded-lg px-3 gap-2 text-xs font-medium bg-[var(--muted)] hover:bg-[var(--secondary-hover)] border border-[var(--border)]/60 shadow-none transition-all focus:ring-0">
+                <GitBranch className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                <span className="max-w-[140px] truncate text-[var(--foreground)]">
+                  {decisions.find(d => d.id === selectedDecision)?.name || "Select ruleset"}
+                </span>
+              </SelectTrigger>
+              <SelectContent align="start" className="min-w-[220px] bg-[var(--popover)] border-[var(--border)] shadow-xl">
+                {decisions.map((decision) => (
+                  <SelectItem key={decision.id} value={decision.id}>
+                    {decision.name}
+                  </SelectItem>
+                ))}
+                <div className="p-1 border-t border-[var(--border)] mt-1">
+                  <Button variant="ghost" size="sm" className="w-full justify-start h-8 text-xs" asChild>
+                    <Link href="/decisions/new">
+                      <Plus className="w-3 h-3 mr-2" />
+                      New rule
+                    </Link>
+                  </Button>
+                </div>
+              </SelectContent>
+            </Select>
+          ) : null}
 
           {/* Attach file */}
           <button
@@ -666,6 +1070,7 @@ function SuperInput({
         <button
           onClick={onSubmit}
           disabled={!canSubmit}
+          title="Submit (⌘+Enter)"
           className={`
             w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200
             ${canSubmit

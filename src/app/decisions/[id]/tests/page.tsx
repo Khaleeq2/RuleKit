@@ -105,6 +105,19 @@ export default function TestsPage() {
     setIsEditorOpen(true);
   };
 
+  const handleCloneTest = (test: Test) => {
+    const clone: Partial<Test> = {
+      decisionId,
+      name: `${test.name} (copy)`,
+      description: test.description,
+      inputJson: { ...test.inputJson },
+      expectedDecision: test.expectedDecision,
+      expectedReason: test.expectedReason,
+    };
+    setEditingTest(clone as Test);
+    setIsEditorOpen(true);
+  };
+
   const handleSaveTest = async (test: Partial<Test>) => {
     try {
       if (test.id) {
@@ -179,7 +192,7 @@ export default function TestsPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1000px] mx-auto px-6 py-8">
+      <div className="max-w-[1200px] mx-auto px-6 py-8">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 rounded-xl bg-[var(--muted)] animate-pulse" />
@@ -190,24 +203,33 @@ export default function TestsPage() {
   }
 
   return (
-    <div className="max-w-[1000px] mx-auto px-6 py-8">
+    <div className="max-w-[1200px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--foreground)]">Tests</h2>
-          <p className="text-sm text-[var(--muted-foreground)] mt-1">
+          <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">Tests</h2>
+          <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
             Verify your decision logic with test cases
           </p>
         </div>
         <div className="flex items-center gap-3">
           {tests.length > 0 && (
             <Button variant="outline" onClick={handleRunAllTests} disabled={isRunningAll}>
-              <Play className="w-4 h-4 mr-2" />
-              {isRunningAll ? 'Running...' : 'Run all tests'}
+              {isRunningAll ? (
+                <>
+                  <RotateCcw className="w-4 h-4 animate-spin" />
+                  Running {tests.length} tests…
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  Run all tests
+                </>
+              )}
             </Button>
           )}
           <Button onClick={handleAddTest}>
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4" />
             Add test
           </Button>
         </div>
@@ -231,7 +253,7 @@ export default function TestsPage() {
               No test cases yet. Add tests to verify your decision logic.
             </p>
             <Button onClick={handleAddTest}>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               Add first test
             </Button>
           </CardContent>
@@ -245,6 +267,7 @@ export default function TestsPage() {
               onEdit={() => handleEditTest(test)}
               onDelete={() => handleDeleteTest(test.id)}
               onRun={() => handleRunTest(test.id)}
+              onClone={() => handleCloneTest(test)}
             />
           ))}
         </div>
@@ -307,11 +330,13 @@ function TestCard({
   onEdit,
   onDelete,
   onRun,
+  onClone,
 }: {
   test: Test;
   onEdit: () => void;
   onDelete: () => void;
   onRun: () => void;
+  onClone: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -355,24 +380,43 @@ function TestCard({
                   {test.description}
                 </p>
               )}
-              {test.lastResult && (
-                <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                  Last run: {formatRelativeTime(test.lastResult.runAt).relative}
-                  {test.lastResult.latencyMs && ` • ${test.lastResult.latencyMs}ms`}
+              {test.lastResult ? (
+                <p className="text-xs mt-1 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[var(--muted-foreground)]">Expected: <strong>{test.expectedDecision}</strong></span>
+                  <span className="text-[var(--muted-foreground)]">·</span>
+                  <span className="text-[var(--muted-foreground)]">Got: <strong>{test.lastResult.actualDecision}</strong></span>
+                  {test.lastResult.passed ? (
+                    <CheckCircle2 className="w-3 h-3 text-[var(--success)] inline" />
+                  ) : (
+                    <XCircle className="w-3 h-3 text-[var(--destructive)] inline" />
+                  )}
+                  {test.lastResult.latencyMs && (
+                    <>
+                      <span className="text-[var(--muted-foreground)]">·</span>
+                      <span className="text-[var(--muted-foreground)]">{test.lastResult.latencyMs}ms</span>
+                    </>
+                  )}
+                  <span className="text-[var(--muted-foreground)]">·</span>
+                  <span className="text-[var(--muted-foreground)]">{formatRelativeTime(test.lastResult.runAt).relative}</span>
                 </p>
+              ) : (
+                <p className="text-xs text-[var(--muted-foreground)]/50 mt-1">Not yet run</p>
               )}
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <Button variant="outline" size="sm" onClick={handleRun} disabled={isRunning}>
-                <Play className="w-4 h-4 mr-1" />
+                <Play className="w-4 h-4" />
                 {isRunning ? 'Running...' : 'Run'}
               </Button>
-              <Button variant="ghost" size="icon" onClick={onEdit}>
+              <Button variant="ghost" size="icon" onClick={onClone} title="Clone test">
+                <Copy className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onEdit} title="Edit test">
                 <Pencil className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={onDelete} className="text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
+              <Button variant="ghost" size="icon" onClick={onDelete} title="Delete test" className="text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
                 <Trash2 className="w-4 h-4" />
               </Button>
               <CollapsibleTrigger asChild>
@@ -551,7 +595,7 @@ function TestEditor({
               className={expectedDecision === 'pass' ? 'bg-[var(--success)] hover:bg-[var(--success)]/90' : ''}
               onClick={() => setExpectedDecision('pass')}
             >
-              <CheckCircle2 className="w-4 h-4 mr-2" />
+              <CheckCircle2 className="w-4 h-4" />
               Pass
             </Button>
             <Button
@@ -559,7 +603,7 @@ function TestEditor({
               className={expectedDecision === 'fail' ? 'bg-[var(--destructive)] hover:bg-[var(--destructive)]/90' : ''}
               onClick={() => setExpectedDecision('fail')}
             >
-              <XCircle className="w-4 h-4 mr-2" />
+              <XCircle className="w-4 h-4" />
               Fail
             </Button>
           </div>

@@ -149,7 +149,7 @@ export default function RulesPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1000px] mx-auto px-6 py-8">
+      <div className="max-w-[1200px] mx-auto px-6 py-8">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-20 rounded-xl bg-[var(--muted)] animate-pulse" />
@@ -160,30 +160,29 @@ export default function RulesPage() {
   }
 
   return (
-    <div className="max-w-[1000px] mx-auto px-6 py-8">
+    <div className="max-w-[1200px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--foreground)]">Rules</h2>
-          <p className="text-sm text-[var(--muted-foreground)] mt-1">
+          <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">Rules</h2>
+          <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
             Define the logic that determines pass or fail outcomes
           </p>
         </div>
         <Button onClick={handleAddRule}>
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="w-4 h-4" />
           Add rule
         </Button>
       </div>
 
       {/* Info card */}
-      <Card className="mb-6 bg-[var(--muted)]/50">
-        <CardContent className="py-4">
-          <p className="text-sm text-[var(--muted-foreground)]">
-            Rules are evaluated in order from top to bottom. The first rule that matches determines the outcome.
-            If no rules match, the default outcome is <strong>pass</strong>.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="mb-6 flex items-start gap-3 p-4 rounded-lg border border-[var(--brand)]/10 border-l-2 border-l-[var(--brand)]/30 bg-[var(--brand)]/[0.03]">
+        <svg className="w-4 h-4 text-[var(--brand)] flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <p className="text-sm text-[var(--muted-foreground)]">
+          Rules are evaluated in order from top to bottom. The first rule that matches determines the outcome.
+          If no rules match, the default outcome is <strong className="text-[var(--foreground)]">pass</strong>.
+        </p>
+      </div>
 
       {/* Rules list */}
       {rules.length === 0 ? (
@@ -193,7 +192,7 @@ export default function RulesPage() {
               No rules defined yet
             </p>
             <Button onClick={handleAddRule}>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               Add first rule
             </Button>
           </CardContent>
@@ -263,11 +262,11 @@ function RuleCard({
   };
 
   return (
-    <Card className={`transition-all ${!rule.enabled ? 'opacity-60' : ''}`}>
+    <Card className={`transition-all duration-200 hover:shadow-md hover:border-[var(--muted-foreground)]/25 group/rule ${!rule.enabled ? 'opacity-60' : ''}`}>
       <CardContent className="py-4">
         <div className="flex items-start gap-4">
-          {/* Drag handle */}
-          <div className="pt-1 cursor-grab text-[var(--muted-foreground)]">
+          {/* Drag handle — visible on hover, cursor-grab */}
+          <div className="pt-1 cursor-grab active:cursor-grabbing text-[var(--muted-foreground)]/30 group-hover/rule:text-[var(--muted-foreground)] transition-colors" title="Drag to reorder (first match wins)">
             <GripVertical className="w-4 h-4" />
           </div>
 
@@ -482,7 +481,7 @@ function RuleEditor({
               className={result === 'fail' ? 'bg-[var(--destructive)] hover:bg-[var(--destructive)]/90' : ''}
               onClick={() => setResult('fail')}
             >
-              <XCircle className="w-4 h-4 mr-2" />
+              <XCircle className="w-4 h-4" />
               Fail
             </Button>
             <Button
@@ -490,7 +489,7 @@ function RuleEditor({
               className={result === 'pass' ? 'bg-[var(--success)] hover:bg-[var(--success)]/90' : ''}
               onClick={() => setResult('pass')}
             >
-              <CheckCircle2 className="w-4 h-4 mr-2" />
+              <CheckCircle2 className="w-4 h-4" />
               Pass
             </Button>
           </div>

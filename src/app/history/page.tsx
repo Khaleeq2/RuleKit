@@ -12,6 +12,9 @@ import {
   ChevronRight,
   Coins,
   AlertTriangle,
+  MessageSquare,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
@@ -32,6 +35,7 @@ import {
 } from '@/app/components/ui/collapsible';
 import { runsRepo } from '@/app/lib/runs';
 import { decisionsRepo } from '@/app/lib/decisions';
+import { sessionsRepo, type Session } from '@/app/lib/sessions';
 import { Run, Decision, Environment, RunTrigger, ENVIRONMENTS } from '@/app/lib/types';
 import { formatRelativeTime } from '@/app/lib/time-utils';
 
@@ -39,8 +43,12 @@ import { formatRelativeTime } from '@/app/lib/time-utils';
 // History Page
 // ============================================
 
+type HistoryTab = 'sessions' | 'runs';
+
 export default function HistoryPage() {
+  const [activeTab, setActiveTab] = useState<HistoryTab>('sessions');
   const [runs, setRuns] = useState<Run[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,15 +56,17 @@ export default function HistoryPage() {
   const [envFilter, setEnvFilter] = useState<'all' | Environment>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pass' | 'fail'>('all');
 
-  // Load runs and decisions
+  // Load runs, sessions, and decisions
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [runsData, decisionsData] = await Promise.all([
+        const [runsData, sessionsData, decisionsData] = await Promise.all([
           runsRepo.list({ limit: 200 }),
+          sessionsRepo.list(),
           decisionsRepo.list(),
         ]);
         setRuns(runsData);
+        setSessions(sessionsData);
         setDecisions(decisionsData);
       } catch (error) {
         console.error('Failed to load data:', error);
@@ -88,13 +98,36 @@ export default function HistoryPage() {
 
   const handleRefresh = async () => {
     setIsLoading(true);
-    const runsData = await runsRepo.list({ limit: 200 });
+    const [runsData, sessionsData] = await Promise.all([
+      runsRepo.list({ limit: 200 }),
+      sessionsRepo.list(),
+    ]);
     setRuns(runsData);
+    setSessions(sessionsData);
     setIsLoading(false);
   };
 
-  // Stats
-  const stats = {
+  // Filter sessions
+  const filteredSessions = sessions.filter((s) => {
+    if (decisionFilter !== 'all' && s.decisionId !== decisionFilter) return false;
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'pass' && s.verdict !== 'pass') return false;
+      if (statusFilter === 'fail' && s.verdict !== 'fail') return false;
+    }
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      if (
+        !s.title.toLowerCase().includes(query) &&
+        !s.decisionName.toLowerCase().includes(query)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Stats — runs
+  const runStats = {
     total: filteredRuns.length,
     passed: filteredRuns.filter(r => r.output.decision === 'pass').length,
     failed: filteredRuns.filter(r => r.output.decision === 'fail').length,
@@ -104,32 +137,87 @@ export default function HistoryPage() {
     totalCredits: filteredRuns.reduce((sum, r) => sum + r.creditsActual, 0),
   };
 
+  // Stats — sessions
+  const sessionStats = {
+    total: filteredSessions.length,
+    passed: filteredSessions.filter(s => s.verdict === 'pass').length,
+    failed: filteredSessions.filter(s => s.verdict === 'fail').length,
+    totalMessages: filteredSessions.reduce((sum, s) => sum + s.messageCount, 0),
+    avgMessages: filteredSessions.length > 0
+      ? Math.round(filteredSessions.reduce((sum, s) => sum + s.messageCount, 0) / filteredSessions.length)
+      : 0,
+  };
+
   return (
     <div className="min-h-full">
       <div className="max-w-[1400px] mx-auto px-6 py-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-6 mb-6">
           <div>
-            <h1 className="text-[length:var(--font-size-h1)] font-semibold text-[var(--foreground)] tracking-tight leading-[var(--line-height-h1)]">
+            <h1 className="text-[22px] font-semibold text-[var(--foreground)] tracking-[-0.01em] leading-tight">
               History
             </h1>
-            <p className="text-[length:var(--font-size-body)] text-[var(--muted-foreground)] mt-1 leading-[var(--line-height-body)]">
-              All rule runs across your account
+            <p className="text-[13px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
+              All evaluation sessions and rule runs
             </p>
           </div>
           <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
 
-        {/* Stats */}
+        {/* Tab Toggle */}
+        <div className="flex items-center gap-1 mb-5 bg-[var(--muted)]/50 rounded-lg p-1 w-fit">
+          <button
+            onClick={() => setActiveTab('sessions')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'sessions'
+                ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5 inline-block mr-1.5 -mt-0.5" />
+            Sessions
+            {sessions.length > 0 && (
+              <span className="ml-1.5 text-xs text-[var(--muted-foreground)]">{sessions.length}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('runs')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'runs'
+                ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 inline-block mr-1.5 -mt-0.5" />
+            Runs
+            {runs.length > 0 && (
+              <span className="ml-1.5 text-xs text-[var(--muted-foreground)]">{runs.length}</span>
+            )}
+          </button>
+        </div>
+
+        {/* Stats — adapts to active tab */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5">
-          <StatCard label="Total runs" value={stats.total} />
-          <StatCard label="Passed" value={stats.passed} icon={CheckCircle2} variant="success" />
-          <StatCard label="Failed" value={stats.failed} icon={XCircle} variant="error" />
-          <StatCard label="Avg latency" value={`${stats.avgLatency}ms`} icon={Clock} />
-          <StatCard label="Credits used" value={stats.totalCredits} icon={Coins} />
+          {activeTab === 'sessions' ? (
+            <>
+              <StatCard label="Total sessions" value={sessionStats.total} />
+              <StatCard label="Passed" value={sessionStats.passed} icon={CheckCircle2} variant="success" />
+              <StatCard label="Failed" value={sessionStats.failed} icon={XCircle} variant="error" />
+              <StatCard label="Total messages" value={sessionStats.totalMessages} icon={MessageSquare} />
+              <StatCard label="Avg messages" value={sessionStats.avgMessages} icon={Clock} />
+            </>
+          ) : (
+            <>
+              <StatCard label="Total runs" value={runStats.total} />
+              <StatCard label="Passed" value={runStats.passed} icon={CheckCircle2} variant="success" />
+              <StatCard label="Failed" value={runStats.failed} icon={XCircle} variant="error" />
+              <StatCard label="Avg latency" value={`${runStats.avgLatency}ms`} icon={Clock} />
+              <StatCard label="Credits used" value={runStats.totalCredits} icon={Coins} />
+            </>
+          )}
         </div>
 
         {/* Filters */}
@@ -179,54 +267,98 @@ export default function HistoryPage() {
           </Select>
         </div>
 
+        {/* Sessions list */}
+        {activeTab === 'sessions' && (
+          isLoading ? (
+            <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
+              <div className="divide-y divide-[var(--border)]">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="px-5 py-4 flex items-center gap-4">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : filteredSessions.length === 0 ? (
+            <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)]">
+              <CardContent className="py-12 text-center">
+                <MessageSquare className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-4" />
+                <p className="text-[var(--muted-foreground)]">
+                  {sessions.length === 0
+                    ? 'No sessions yet. Start an evaluation from the Home page.'
+                    : 'No sessions match your filters'}
+                </p>
+                <Button variant="outline" className="mt-4" asChild>
+                  <Link href="/home">Start evaluating</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
+              <div className="divide-y divide-[var(--border)]">
+                {filteredSessions.map((session, idx) => (
+                  <SessionRow key={session.id} session={session} isEven={idx % 2 === 0} />
+                ))}
+              </div>
+            </Card>
+          )
+        )}
+
         {/* Runs list */}
-        {isLoading ? (
-          <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
-            <div className="hidden md:grid grid-cols-[24px_120px_1fr_92px_80px_90px_80px_24px] gap-4 items-center px-4 py-3 bg-[var(--muted)]/50 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">
-              <span></span>
-              <span>Time</span>
-              <span>Rule</span>
-              <span>Env</span>
-              <span>Result</span>
-              <span className="text-right">Latency</span>
-              <span className="text-right">Credits</span>
-              <span></span>
-            </div>
-            <div className="divide-y divide-[var(--border)]">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <RunRowSkeleton key={i} />
-              ))}
-            </div>
-          </Card>
-        ) : filteredRuns.length === 0 ? (
-          <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)]">
-            <CardContent className="py-12 text-center">
-              <AlertTriangle className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-4" />
-              <p className="text-[var(--muted-foreground)]">
-                {runs.length === 0
-                  ? 'No runs yet. Runs will appear here when you execute rules.'
-                  : 'No runs match your filters'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
-            <div className="hidden md:grid grid-cols-[24px_120px_1fr_92px_80px_90px_80px_24px] gap-4 items-center px-4 py-3 bg-[var(--muted)]/50 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">
-              <span></span>
-              <span>Time</span>
-              <span>Rule</span>
-              <span>Env</span>
-              <span>Result</span>
-              <span className="text-right">Latency</span>
-              <span className="text-right">Credits</span>
-              <span></span>
-            </div>
-            <div className="divide-y divide-[var(--border)]">
-              {filteredRuns.map((run, idx) => (
-                <RunRow key={run.id} run={run} isEven={idx % 2 === 0} />
-              ))}
-            </div>
-          </Card>
+        {activeTab === 'runs' && (
+          isLoading ? (
+            <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
+              <div className="hidden md:grid grid-cols-[24px_120px_1fr_92px_80px_90px_80px_24px] gap-4 items-center px-4 py-3 bg-[var(--muted)]/50 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">
+                <span></span>
+                <span>Time</span>
+                <span>Rule</span>
+                <span>Env</span>
+                <span>Result</span>
+                <span className="text-right">Latency</span>
+                <span className="text-right">Credits</span>
+                <span></span>
+              </div>
+              <div className="divide-y divide-[var(--border)]">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <RunRowSkeleton key={i} />
+                ))}
+              </div>
+            </Card>
+          ) : filteredRuns.length === 0 ? (
+            <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)]">
+              <CardContent className="py-12 text-center">
+                <AlertTriangle className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-4" />
+                <p className="text-[var(--muted-foreground)]">
+                  {runs.length === 0
+                    ? 'No runs yet. Runs will appear here when you execute rules.'
+                    : 'No runs match your filters'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
+              <div className="hidden md:grid grid-cols-[24px_120px_1fr_92px_80px_90px_80px_24px] gap-4 items-center px-4 py-3 bg-[var(--muted)]/50 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">
+                <span></span>
+                <span>Time</span>
+                <span>Rule</span>
+                <span>Env</span>
+                <span>Result</span>
+                <span className="text-right">Latency</span>
+                <span className="text-right">Credits</span>
+                <span></span>
+              </div>
+              <div className="divide-y divide-[var(--border)]">
+                {filteredRuns.map((run, idx) => (
+                  <RunRow key={run.id} run={run} isEven={idx % 2 === 0} />
+                ))}
+              </div>
+            </Card>
+          )
         )}
       </div>
     </div>
@@ -333,11 +465,11 @@ function RunRow({ run, isEven }: { run: Run; isEven: boolean }) {
                 </p>
                 <div className="md:hidden mt-2 flex items-center gap-3 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)]">
                   <span className="capitalize">{run.environment}</span>
-                  <span className="text-[var(--muted-foreground)]/50">•</span>
+                  <span className="text-[var(--border)]">&middot;</span>
                   <span>{triggerLabels[run.trigger]}</span>
-                  <span className="text-[var(--muted-foreground)]/50">•</span>
+                  <span className="text-[var(--border)]">&middot;</span>
                   <span>{run.latencyMs}ms</span>
-                  <span className="text-[var(--muted-foreground)]/50">•</span>
+                  <span className="text-[var(--border)]">&middot;</span>
                   <span>{run.creditsActual} credits</span>
                 </div>
               </div>
@@ -410,5 +542,78 @@ function RunRow({ run, isEven }: { run: Run; isEven: boolean }) {
         </CollapsibleContent>
       </div>
     </Collapsible>
+  );
+}
+
+// ============================================
+// Session Row
+// ============================================
+
+function SessionRow({ session, isEven }: { session: Session; isEven: boolean }) {
+  const reason = session.messages.find(m => m.evaluation)?.evaluation?.reason;
+
+  return (
+    <Link
+      href={`/home?session=${session.id}`}
+      aria-label={`Open session: ${session.title} — ${session.verdict === 'pass' ? 'Passed' : session.verdict === 'fail' ? 'Failed' : 'Pending'}`}
+      className={`flex items-center gap-4 px-5 py-4 hover:bg-[var(--muted)]/40 hover:-translate-y-[0.5px] focus-visible:ring-2 focus-visible:ring-[var(--brand)]/30 focus-visible:ring-offset-1 transition-all duration-200 ${
+        isEven ? '' : 'bg-[var(--muted)]/20'
+      }`}
+    >
+      {/* Verdict icon */}
+      <div className="flex-shrink-0" aria-hidden="true">
+        {session.verdict === 'pass' ? (
+          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          </div>
+        ) : session.verdict === 'fail' ? (
+          <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+            <ShieldAlert className="w-4 h-4 text-red-600 dark:text-red-400" />
+          </div>
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-[var(--muted)] flex items-center justify-center">
+            <MessageSquare className="w-4 h-4 text-[var(--muted-foreground)]" />
+          </div>
+        )}
+      </div>
+
+      {/* Title + verdict badge + decision + reason */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-[var(--foreground)] truncate">
+            {session.title}
+          </p>
+          {session.verdict && (
+            session.verdict === 'pass' ? (
+              <Badge className="rounded-full bg-emerald-100 text-emerald-700 border-emerald-200 text-[11px] px-2 py-0.5 font-semibold dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 flex-shrink-0">
+                Pass
+              </Badge>
+            ) : (
+              <Badge className="rounded-full bg-red-100 text-red-700 border-red-200 text-[11px] px-2 py-0.5 font-semibold dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 flex-shrink-0">
+                Fail
+              </Badge>
+            )
+          )}
+        </div>
+        <p className="text-xs text-[var(--muted-foreground)] mt-0.5 truncate">
+          {session.decisionName}
+          <span className="mx-1.5 text-[var(--border)]">&middot;</span>
+          {session.messageCount} message{session.messageCount !== 1 ? 's' : ''}
+          {reason && (
+            <>
+              <span className="mx-1.5 text-[var(--border)]">&middot;</span>
+              {reason}
+            </>
+          )}
+        </p>
+      </div>
+
+      {/* Timestamp */}
+      <div className="flex-shrink-0 text-xs text-[var(--muted-foreground)]">
+        {formatRelativeTime(session.updatedAt).relative}
+      </div>
+
+      <ChevronRight className="w-4 h-4 text-[var(--muted-foreground)] flex-shrink-0" />
+    </Link>
   );
 }

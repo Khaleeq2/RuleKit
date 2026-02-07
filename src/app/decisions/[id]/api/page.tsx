@@ -134,12 +134,12 @@ console.log(response.data);
   };
 
   return (
-    <div className="max-w-[1000px] mx-auto px-6 py-8">
+    <div className="max-w-[1200px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--foreground)]">API</h2>
-          <p className="text-sm text-[var(--muted-foreground)] mt-1">
+          <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">API</h2>
+          <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
             Integrate this decision into your application
           </p>
         </div>
@@ -159,36 +159,47 @@ console.log(response.data);
           <Button variant="outline" size="sm" asChild>
             <Link href="/integrations">
               Manage API keys
-              <ExternalLink className="w-4 h-4 ml-2" />
+              <ExternalLink className="w-4 h-4" />
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* Endpoint Card */}
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Endpoint</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            <Badge className="bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20 font-mono">
-              POST
-            </Badge>
-            <code className="flex-1 p-3 rounded-lg bg-[var(--muted)] text-sm font-mono">
-              {fullUrl}
-            </code>
+      {/* Quick Start — copy-pastable cURL front and center */}
+      <Card className="mb-6 bg-gradient-to-br from-[var(--brand)]/6 to-transparent border-[var(--brand)]/15">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Terminal className="w-4 h-4" />
+                Quick Start
+              </CardTitle>
+              <CardDescription className="mt-1">Copy and run this in your terminal</CardDescription>
+            </div>
             <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleCopy(fullUrl, 'url')}
+              variant="outline"
+              size="sm"
+              onClick={() => handleCopy(snippets.curl, 'quickstart')}
             >
-              {copiedSnippet === 'url' ? (
-                <Check className="w-4 h-4 text-[var(--success)]" />
+              {copiedSnippet === 'quickstart' ? (
+                <><Check className="w-3.5 h-3.5 text-[var(--success)]" />Copied</>
               ) : (
-                <Copy className="w-4 h-4" />
+                <><Copy className="w-3.5 h-3.5" />Copy command</>
               )}
             </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <pre className="p-4 rounded-lg bg-[var(--card)] border border-[var(--border)] text-xs font-mono overflow-auto max-h-48 leading-relaxed">
+            {snippets.curl}
+          </pre>
+          <div className="flex items-center gap-3 mt-3">
+            <Badge className="bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20 font-mono text-[10px]">
+              POST
+            </Badge>
+            <code className="text-xs font-mono text-[var(--muted-foreground)]">
+              {fullUrl}
+            </code>
           </div>
         </CardContent>
       </Card>
@@ -204,14 +215,14 @@ console.log(response.data);
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="relative">
+            <div className="relative group/code">
               <pre className="p-4 rounded-lg bg-[var(--muted)] text-sm font-mono overflow-auto max-h-64">
                 {JSON.stringify(sampleInput, null, 2)}
               </pre>
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-2 right-2"
+                className="absolute top-2 right-2 opacity-0 group-hover/code:opacity-100 transition-opacity"
                 onClick={() => handleCopy(JSON.stringify(sampleInput, null, 2), 'request')}
               >
                 {copiedSnippet === 'request' ? (
@@ -294,12 +305,12 @@ console.log(response.data);
                   >
                     {copiedSnippet === lang ? (
                       <>
-                        <Check className="w-4 h-4 mr-1 text-[var(--success)]" />
+                        <Check className="w-4 h-4 text-[var(--success)]" />
                         Copied
                       </>
                     ) : (
                       <>
-                        <Copy className="w-4 h-4 mr-1" />
+                        <Copy className="w-4 h-4" />
                         Copy
                       </>
                     )}

@@ -45,7 +45,7 @@ export default function RulesLibraryPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-[var(--foreground)] mb-1">
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-[var(--foreground)] mb-1 leading-tight">
             Rules Library
           </h1>
           <p className="text-[var(--muted-foreground)]">
