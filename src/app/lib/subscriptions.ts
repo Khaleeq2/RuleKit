@@ -37,14 +37,25 @@ function toSubscription(row: any): Subscription {
 
 export const subscriptionRepo = {
   async get(): Promise<Subscription | null> {
-    const { data, error } = await sb()
-      .from('subscriptions')
-      .select('*')
-      .maybeSingle();
+    try {
+      const { data, error } = await sb()
+        .from('subscriptions')
+        .select('*')
+        .maybeSingle();
 
-    if (error) throw error;
-    if (!data) return null;
-    return toSubscription(data);
+      if (error) {
+        // Table may not exist yet (migration not run)
+        if (error.code === '42P01' || error.message?.includes('does not exist')) {
+          return null;
+        }
+        throw error;
+      }
+      if (!data) return null;
+      return toSubscription(data);
+    } catch {
+      // Gracefully degrade if subscriptions table isn't available
+      return null;
+    }
   },
 
   async createCheckoutSession(mode: 'subscription' | 'credit_pack', packId?: string): Promise<string> {
