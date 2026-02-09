@@ -1,11 +1,11 @@
 'use client';
 
 // ============================================
-// Sessions Repository
-// Persists conversational evaluation sessions to localStorage.
+// Sessions Repository — Supabase-backed
 // ============================================
 
 import type { EvaluationResult } from './evaluation-types';
+import { getSupabaseBrowserClient } from './supabase-browser';
 
 // --- Types ---
 
@@ -29,35 +29,27 @@ export interface Session {
   updatedAt: string;
 }
 
-// --- Storage ---
+// --- Helpers ---
 
-const STORAGE_KEY = 'rulekit.sessions.v1';
-const CHANGE_EVENT = 'rulekit:sessions-changed';
-
-function generateId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+function sb() {
+  return getSupabaseBrowserClient();
 }
 
-function readAll(): Session[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function toSession(row: any): Session {
+  return {
+    id: row.id,
+    title: row.title,
+    decisionId: row.decision_id,
+    decisionName: row.decision_name,
+    verdict: row.verdict,
+    messageCount: row.message_count,
+    messages: row.messages ?? [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
-
-function writeAll(sessions: Session[]): void {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-  window.dispatchEvent(new Event(CHANGE_EVENT));
-}
-
-// --- Derive title from first user message ---
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 function deriveTitle(messages: SessionMessage[]): string {
   const firstUser = messages.find(m => m.type === 'user');
@@ -66,8 +58,6 @@ function deriveTitle(messages: SessionMessage[]): string {
   if (text.length <= 60) return text;
   return text.slice(0, 57) + '...';
 }
-
-// --- Derive verdict from last evaluation ---
 
 function deriveVerdict(messages: SessionMessage[]): 'pass' | 'fail' | null {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -78,8 +68,6 @@ function deriveVerdict(messages: SessionMessage[]): 'pass' | 'fail' | null {
   return null;
 }
 
-// --- Check if title is still raw input (needs AI generation) ---
-
 function isTitleRaw(session: Session): boolean {
   const firstUser = session.messages.find(m => m.type === 'user');
   if (!firstUser) return false;
@@ -89,21 +77,40 @@ function isTitleRaw(session: Session): boolean {
   return session.title === rawTitle || session.title === 'Untitled session';
 }
 
+const CHANGE_EVENT = 'rulekit:sessions-changed';
+function notify() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(CHANGE_EVENT));
+  }
+}
+
 // --- Repository ---
 
 export const sessionsRepo = {
   async list(): Promise<Session[]> {
-    return readAll().sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
+    const { data, error } = await sb()
+      .from('sessions')
+      .select('*')
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    return (data ?? []).map(toSession);
   },
 
   async getById(id: string): Promise<Session | null> {
-    return readAll().find(s => s.id === id) ?? null;
+    const { data, error } = await sb()
+      .from('sessions')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data ? toSession(data) : null;
   },
 
   async listNeedingTitles(): Promise<Session[]> {
-    return readAll().filter(s =>
+    const sessions = await this.list();
+    return sessions.filter(s =>
       s.messages.some(m => m.evaluation) &&
       (isTitleRaw(s) || s.title.includes('|'))
     );
@@ -114,57 +121,69 @@ export const sessionsRepo = {
     decisionName: string,
     messages: SessionMessage[]
   ): Promise<Session> {
-    const sessions = readAll();
-    const now = new Date().toISOString();
+    const { data, error } = await sb()
+      .from('sessions')
+      .insert({
+        title: deriveTitle(messages),
+        decision_id: decisionId,
+        decision_name: decisionName,
+        verdict: deriveVerdict(messages),
+        message_count: messages.length,
+        messages,
+      })
+      .select()
+      .single();
 
-    const session: Session = {
-      id: generateId(),
-      title: deriveTitle(messages),
-      decisionId,
-      decisionName,
-      verdict: deriveVerdict(messages),
-      messageCount: messages.length,
-      messages,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    writeAll([session, ...sessions]);
-    return session;
+    if (error) throw error;
+    notify();
+    return toSession(data);
   },
 
   async update(id: string, messages: SessionMessage[]): Promise<Session | null> {
-    const sessions = readAll();
-    const idx = sessions.findIndex(s => s.id === id);
-    if (idx === -1) return null;
+    const existing = await this.getById(id);
+    if (!existing) return null;
 
-    // Only bump timestamp on meaningful change (new message added)
-    const hasNewContent = messages.length !== sessions[idx].messageCount;
+    const hasNewContent = messages.length !== existing.messageCount;
 
-    sessions[idx] = {
-      ...sessions[idx],
-      // Preserve existing title — AI title is set via updateTitle()
+    const updates: Record<string, unknown> = {
       verdict: deriveVerdict(messages),
-      messageCount: messages.length,
+      message_count: messages.length,
       messages,
-      ...(hasNewContent && { updatedAt: new Date().toISOString() }),
     };
+    if (hasNewContent) {
+      updates.updated_at = new Date().toISOString();
+    }
 
-    writeAll(sessions);
-    return sessions[idx];
+    const { data, error } = await sb()
+      .from('sessions')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    notify();
+    return toSession(data);
   },
 
   async updateTitle(id: string, title: string): Promise<void> {
-    const sessions = readAll();
-    const idx = sessions.findIndex(s => s.id === id);
-    if (idx === -1) return;
-    sessions[idx] = { ...sessions[idx], title, updatedAt: new Date().toISOString() };
-    writeAll(sessions);
+    const { error } = await sb()
+      .from('sessions')
+      .update({ title, updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
+    notify();
   },
 
   async remove(id: string): Promise<void> {
-    const sessions = readAll();
-    writeAll(sessions.filter(s => s.id !== id));
+    const { error } = await sb()
+      .from('sessions')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    notify();
   },
 
   subscribe(callback: () => void): () => void {

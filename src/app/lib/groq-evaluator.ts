@@ -10,7 +10,6 @@ import {
   GROQ_MODEL,
 } from './groq-client';
 import type { GroqMessage, GroqChatResponse } from './groq-client';
-import { withRetry } from './evaluation-retry';
 import type {
   EvaluatorRule,
   RawGroqResponse,
@@ -22,6 +21,25 @@ import type {
   ModelMeta,
   RuleVerdict,
 } from './evaluation-types';
+
+// ============================================
+// Retry helper (inlined from evaluation-retry.ts)
+// ============================================
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, delayMs * 2 ** attempt));
+      }
+    }
+  }
+  throw lastError;
+}
 
 // ============================================
 // Constants

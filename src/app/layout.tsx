@@ -1,19 +1,28 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
+import { Analytics } from "@vercel/analytics/react";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-});
 
 export const metadata: Metadata = {
-  title: "RuleKit",
-  description: "Premium rule validation platform for creating and managing validation rules",
+  title: {
+    default: 'RuleKit — Turn human judgment into rules that run themselves',
+    template: '%s | RuleKit',
+  },
+  description: "Write rules in plain English. Run them on any input. Get instant, explainable decisions — without hardcoding business logic.",
+  openGraph: {
+    type: 'website',
+    siteName: 'RuleKit',
+    title: 'RuleKit — Turn human judgment into rules that run themselves',
+    description: 'Write rules in plain English. Run them on any input. Get instant, explainable decisions — without hardcoding business logic.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'RuleKit — Turn human judgment into rules that run themselves',
+    description: 'Write rules in plain English. Run them on any input. Get instant, explainable decisions.',
+  },
   icons: {
     icon: [
       // Put .ico first (best fallback) and add cache-busting
@@ -34,10 +43,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${GeistSans.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
           <Toaster position="top-right" />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

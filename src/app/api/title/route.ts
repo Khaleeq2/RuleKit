@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createGroqChatCompletion, GROQ_MODEL } from '@/app/lib/groq-client';
+import { checkRateLimit } from '@/app/lib/rate-limit';
 
 interface TitleRequest {
   userMessage: string;
@@ -21,6 +22,15 @@ interface TitleResponse {
 
 export async function POST(req: NextRequest): Promise<NextResponse<TitleResponse>> {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const { allowed } = checkRateLimit(`title:${ip}`, { maxRequests: 30, windowMs: 60_000 });
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests' },
+        { status: 429 }
+      );
+    }
+
     const body: TitleRequest = await req.json();
 
     if (!body.userMessage || !body.decisionName) {

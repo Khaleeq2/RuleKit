@@ -15,12 +15,8 @@ import {
   Coins,
   Sun,
   Moon,
-  ChevronsUpDown,
   ChevronRight,
   ChevronLeft,
-  Building2,
-  Plus,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -40,6 +36,7 @@ import {
 import { billingRepo } from '@/app/lib/billing';
 import { PageTransition } from '@/app/components/PageTransition';
 import { CreditBalance } from '@/app/lib/types';
+import { getSupabaseBrowserClient } from '@/app/lib/supabase-browser';
 
 // ============================================
 // Navigation Items
@@ -49,15 +46,6 @@ const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: Home, href: '/home' },
   { id: 'decisions', label: 'Rules', icon: ShieldCheck, href: '/decisions' },
   { id: 'history', label: 'History', icon: History, href: '/history' },
-] as const;
-
-// ============================================
-// Mock workspaces (UI-only for now)
-// ============================================
-
-const WORKSPACES = [
-  { id: 'default', name: 'Default Workspace', isActive: true },
-  { id: 'staging', name: 'Staging', isActive: false },
 ] as const;
 
 // ============================================
@@ -75,8 +63,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [credits, setCredits] = useState<CreditBalance | null>(null);
   const [mounted, setMounted] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    (async () => {
+      const supabase = getSupabaseBrowserClient();
+      const { data } = await supabase.auth.getUser();
+      setUserEmail(data.user?.email ?? null);
+    })();
+  }, []);
 
   const logoSrc = mounted && resolvedTheme === 'dark'
     ? '/RuleKit-White.svg'
@@ -128,30 +124,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             </span>
           </Link>
 
-          {/* Right: Workspace Switcher */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 h-8 px-3 rounded-lg text-[13px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors">
-                <Building2 className="w-4 h-4" />
-                <span>Default Workspace</span>
-                <ChevronsUpDown className="w-3.5 h-3.5 opacity-50" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-[var(--popover)] border border-[var(--border)] shadow-xl">
-              <DropdownMenuLabel className="text-xs text-[var(--muted-foreground)]">Workspaces</DropdownMenuLabel>
-              {WORKSPACES.map((ws) => (
-                <DropdownMenuItem key={ws.id} className="flex items-center justify-between">
-                  <span>{ws.name}</span>
-                  {ws.isActive && <Check className="w-3.5 h-3.5 text-[var(--brand)]" />}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Plus className="w-3.5 h-3.5 mr-2" />
-                Create workspace
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Right: placeholder for future workspace switcher */}
+          <div />
         </header>
 
         {/* ── Below header: icon rail + content ── */}
@@ -250,10 +224,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <button className={`flex items-center w-full p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors ${sidebarExpanded ? 'gap-2.5' : 'justify-center'}`}>
                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]/70 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
-                      U
+                      {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
                     </div>
                     {sidebarExpanded && (
-                      <span className="text-sm text-[var(--foreground)] truncate">user@example.com</span>
+                      <span className="text-sm text-[var(--foreground)] truncate">{userEmail ?? 'Account'}</span>
                     )}
                   </button>
                 </DropdownMenuTrigger>
@@ -280,7 +254,13 @@ export function AppLayout({ children }: AppLayoutProps) {
                     {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-[var(--destructive)]">
+                  <DropdownMenuItem
+                    className="text-[var(--destructive)]"
+                    onClick={async () => {
+                      await getSupabaseBrowserClient().auth.signOut();
+                      router.push('/auth/sign-in');
+                    }}
+                  >
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign out
                   </DropdownMenuItem>

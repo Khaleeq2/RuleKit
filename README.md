@@ -66,27 +66,33 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `NEXT_PUBLIC_SUPABASE_PROJECT_ID` | Your Supabase project ID |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous/public key |
 | `NEXT_PUBLIC_API_URL` | API base URL (default: `http://localhost:3000/api`) |
+| `GROQ_API_KEY` | Groq API key used by `/api/evaluate`, `/api/chat`, and `/api/title` |
+| `NEXT_PUBLIC_SITE_URL` | Canonical public site URL used for metadata/sitemap generation |
+| `NEXT_PUBLIC_MAINTENANCE_MODE` | Set to `true` to route public pages to `/maintenance` via middleware |
 
 ## Project Structure
 
 ```
-src/
-├── app/
-│   ├── components/       # Shared UI components (AppLayout, shadcn/ui)
-│   ├── home/             # Home — Decide screen
-│   ├── decisions/        # Rules management (CRUD, editor, versions)
-│   ├── history/          # Global run history and audit log
-│   ├── billing/          # Credits, usage, and top-ups
-│   ├── settings/         # User and workspace settings
-│   ├── lib/              # Data layer (decisions, rules, runs, billing, types)
-│   ├── api/              # API routes
-│   └── globals.css       # Design system tokens and global styles
-├── lib/                  # Shared utilities
-└── styles/               # Additional style modules
-docs/
-├── ARCHITECTURE.md       # System architecture and data flow
-├── DESIGN_SYSTEM.md      # Design tokens, typography, color system
-└── DEVELOPMENT.md        # Development guide and conventions
+.
+├── middleware.ts         # Public-site maintenance toggle and routing guard
+├── src/
+│   ├── app/
+│   │   ├── (marketing)/  # Public site (/, product, pricing, developers, resources, company, legal, auth)
+│   │   ├── (app)/        # In-app product routes (/home, /decisions, /history, /billing, /settings, /dashboard)
+│   │   ├── components/   # Shared UI components (AppLayout, DashboardLayout, shadcn/ui)
+│   │   ├── lib/          # Data layer (decisions, rules, runs, billing, types)
+│   │   ├── api/          # API routes
+│   │   ├── not-found.tsx # Global 404 page
+│   │   ├── robots.ts     # Robots directives
+│   │   ├── sitemap.ts    # Sitemap generation
+│   │   └── globals.css   # Design system tokens and global styles
+│   ├── lib/              # Shared utilities
+│   └── styles/           # Additional style modules
+└── docs/
+    ├── ARCHITECTURE.md
+    ├── DESIGN_SYSTEM.md
+    ├── DEVELOPMENT.md
+    └── PUBLIC_SITE_STRATEGY.md
 ```
 
 ## How It Works
@@ -128,6 +134,7 @@ npm run start     # Start production server
 - **[Architecture](docs/ARCHITECTURE.md)** — System design, data models, and flow
 - **[Design System](docs/DESIGN_SYSTEM.md)** — Tokens, typography, color, spacing
 - **[Development](docs/DEVELOPMENT.md)** — Conventions, patterns, and contribution guide
+- **[Public Site Strategy](docs/PUBLIC_SITE_STRATEGY.md)** — Non-in-app marketing site schema, migration path, and rollout phases
 
 ## License
 

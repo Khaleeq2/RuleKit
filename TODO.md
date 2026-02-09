@@ -11,7 +11,7 @@
 - [x] **[AI]** Create `src/app/lib/evaluation-retry.ts` — retry with exponential backoff (ported from Assurium)
 - [x] **[AI]** Create `src/app/lib/groq-evaluator.ts` — prompt building, Groq call, JSON validation, result normalization
 - [x] **[AI]** Create `src/app/api/evaluate/route.ts` — POST endpoint accepting input + rules, returns structured result
-- [x] **[AI]** Wire `src/app/home/page.tsx` — replace `simulateExecution` mock with real `/api/evaluate` call
+- [x] **[AI]** Wire `src/app/(app)/home/page.tsx` — replace `simulateExecution` mock with real `/api/evaluate` call
 - [x] **[AI]** Create `.env.local.example` with `GROQ_API_KEY` placeholder
 - [ ] **[HUMAN]** Add your Groq API key to `.env.local` → `GROQ_API_KEY=gsk_...`
 
@@ -106,6 +106,98 @@
 - [x] **[AI]** Delta indicators: improved (green ↗), regressed (red ↘), unchanged (grey –)
 - [x] **[AI]** Verdict badges (Fail → Pass) with confidence delta percentages
 - [x] **[AI]** Auto-renders after second evaluation in session thread
+
+## Phase 9: Non-In-App Public Site Foundation
+
+> See `docs/PUBLIC_SITE_STRATEGY.md` for current-state assessment, target schema, and migration rationale.
+
+### 9a. Route Architecture (HIGH)
+- [x] **[AI]** Introduce route groups: `src/app/(marketing)` and `src/app/(app)`
+- [x] **[AI]** Move existing in-app routes into `(app)` group without URL changes (`/home`, `/decisions`, `/history`, `/billing`, `/settings`, `/dashboard`)
+- [x] **[AI]** Replace root redirect behavior with a real marketing landing page at `/`
+- [x] **[AI]** Create dedicated marketing layout (public nav/footer) separate from app shell
+
+### 9b. Public IA Scaffold (HIGH)
+- [x] **[AI]** Scaffold public top-level sections:
+  - `/product/*`
+  - `/solutions/*`
+  - `/pricing/*`
+  - `/developers/*`
+  - `/resources/*`
+  - `/company/*`
+  - `/legal/*`
+- [x] **[AI]** Add minimal content templates and consistent CTA patterns across all public pages
+
+### 9c. Auth URL Normalization (MEDIUM)
+- [x] **[AI]** Add `/auth/sign-in` and `/auth/sign-up`
+- [x] **[AI]** Keep `/login` and `/signup` as compatibility redirects during migration
+- [x] **[AI]** Update all internal links to prefer `/auth/*`
+
+### 9d. Public-Site Ops Essentials (HIGH)
+- [x] **[AI]** Add custom `not-found` page for public-site quality
+- [x] **[AI]** Add `/maintenance` page and toggle mechanism
+- [x] **[AI]** Add sitemap + robots + baseline per-page metadata
+
+## Phase 10: Route Hygiene, Content, and Launch Readiness
+
+### 10a. Broken Link Cleanup (HIGH)
+- [x] **[AI]** Resolve `/integrations` link target used by decision API page (implement route or change CTA)
+- [x] **[AI]** Resolve `/runs` link target used by decision runs page (implement route or change CTA)
+
+### 10b. Public Content Completion (MEDIUM)
+- [x] **[AI]** Fill core conversion pages first:
+  - `/product/overview`
+  - `/pricing/plans`
+  - `/developers/quickstart`
+  - `/legal/terms`
+  - `/legal/privacy`
+  - `/legal/security`
+- [x] **[AI]** Publish solution pages aligned with current app capabilities:
+  - loan eligibility
+  - fraud screening
+  - support routing
+  - content moderation
+
+### 10c. Final Readiness (MEDIUM)
+- [x] **[AI]** Verify nav and CTA paths between marketing and app entry points
+- [x] **[AI]** Validate canonical URLs and metadata coverage for all public pages
+- [x] **[AI]** Run a full route check for 404-free primary user journeys
+
+## Phase 11: Production Readiness & Polish
+
+### 11a. Supabase Migration (DONE)
+- [x] **[AI]** Create manual `database.types.ts` from migration SQL (all 11 tables)
+- [x] **[AI]** Migrate `versions.ts` from localStorage → Supabase
+- [x] **[AI]** Migrate `tests.ts` from localStorage → Supabase
+- [ ] **[FUTURE]** Replace manual types with `supabase gen types` when DB access available
+
+### 11b. Auth Polish (DONE)
+- [x] **[AI]** Consistent logo, typography, spacing across all 4 auth pages
+- [x] **[AI]** Google OAuth button on sign-in and sign-up
+- [x] **[AI]** OAuth callback route (`/auth/callback`)
+- [ ] **[HUMAN]** Configure Google Cloud OAuth credentials + Supabase provider
+
+### 11c. Marketing Sub-Pages (TODO — not blockers)
+These sub-pages still use `PublicPageTemplate` with placeholder content and an "under development" notice:
+- [ ] `/product/how-it-works`
+- [ ] `/product/decision-studio`
+- [ ] `/solutions/loan-eligibility`
+- [ ] `/solutions/fraud-screening`
+- [ ] `/solutions/routing`
+- [ ] `/solutions/content-moderation`
+- [ ] `/developers/api-reference`
+- [ ] `/resources/changelog`
+- [ ] `/resources/blog`
+- [ ] `/company/careers`
+- [ ] `/company/contact`
+
+### 11d. File Upload & Attachments (TODO)
+- [ ] **[AI]** Drag-and-drop file upload in chat area
+- [ ] **[AI]** Content-type detection and preview
+- [ ] **[AI]** Supabase Storage bucket for user uploads
+
+### 11e. Design Token Unification (DEFERRED)
+- [ ] **[FUTURE]** Unify Tailwind utilities vs CSS custom property usage
 
 ---
 

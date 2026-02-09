@@ -7,6 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { GroqConfigError } from '@/app/lib/groq-client';
+import { checkRateLimit } from '@/app/lib/rate-limit';
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 const GROQ_MODEL = 'openai/gpt-oss-20b';
@@ -82,6 +83,15 @@ function getApiKey(): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const { allowed } = checkRateLimit(`chat:${ip}`, { maxRequests: 15, windowMs: 60_000 });
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Too many requests. Please wait a moment.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body: ChatRequest = await req.json();
 
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {

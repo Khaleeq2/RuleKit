@@ -8,9 +8,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { evaluateRules } from '@/app/lib/groq-evaluator';
 import { GroqConfigError, GroqTransientError, GroqValidationError } from '@/app/lib/groq-client';
 import type { EvaluateRequest, EvaluateResponse } from '@/app/lib/evaluation-types';
+import { checkRateLimit } from '@/app/lib/rate-limit';
 
 export async function POST(req: NextRequest): Promise<NextResponse<EvaluateResponse>> {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const { allowed, remaining } = checkRateLimit(`evaluate:${ip}`, { maxRequests: 20, windowMs: 60_000 });
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please wait a moment.', error_type: 'unknown' },
+        { status: 429, headers: { 'X-RateLimit-Remaining': String(remaining) } }
+      );
+    }
+
     const body: EvaluateRequest = await req.json();
 
     // Validate request shape
