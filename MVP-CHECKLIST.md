@@ -1,7 +1,7 @@
 # RuleKit — MVP Production Readiness Checklist
 
 > Comprehensive audit from full app crawl. Categorized by severity for Day-1 PMF.
-> **Last updated: Feb 9, 2026 — Post-execution sweep**
+> **Last updated: Feb 9, 2026 — Stripe billing integration complete**
 
 ---
 
@@ -15,7 +15,7 @@
 - [x] **`createdBy: 'user-1'` hardcoded** — Fixed in `decisions/page.tsx` `handleDuplicate`. Now uses `supabase.auth.getUser()` to get real user ID.
 
 ### Data Integrity
-- [x] **Billing "Purchase"** — Top-up button disabled with "Coming soon" badge. No free credit abuse possible.
+- [x] **Billing "Purchase"** — Fully wired to Stripe. Credit pack purchases via Stripe Checkout. Pro subscription upgrade + Customer Portal. Webhook handles all payment events.
 - [x] **Test runner wired to real API** — `testsRepo.runTest()` now calls `/api/evaluate` with real decision rules, compares actual verdict against expected, and reports pass/fail accurately.
 
 ### Environment
@@ -79,7 +79,11 @@
 - [x] Hardcoded `user-1` replaced with real Supabase user ID
 - [x] Test runner wired to `/api/evaluate` (real evaluation, not simulation)
 - [x] Settings page fully wired: real user data, theme, notifications, password reset, account deletion
-- [x] Billing purchase disabled with "Coming soon" guard
+- [x] Stripe billing integration: subscriptions, credit packs, webhook, customer portal
+- [x] Subscriptions table + migration run against Supabase
+- [x] Stripe products/prices seeded programmatically (Pro $29/mo, seat add-on $5/mo, 3 credit packs)
+- [x] Billing page: plan card, upgrade CTA, credit purchase via Stripe Checkout, manage billing portal
+- [x] Marketing pricing page updated: 500 evals/mo Pro, 3 seats +$5/ea, corrected credit packs
 - [x] Implicit `any` types fixed across home and history pages
 - [x] Error states added to decisions, history, and billing pages
 - [x] Legacy file cleanup verified — no dead code
@@ -103,8 +107,10 @@
 1. ~~**Google OAuth in Supabase Dashboard**~~ ✅ Done
 2. ~~**DATABASE_URL `@` encoding**~~ ✅ Fixed (`%40`)
 3. ~~**Marketing sub-page content**~~ ✅ All 19 pages enriched with real content
-4. **Supabase types** — Run `supabase gen types typescript` when CLI access is available
+4. ~~**Stripe billing**~~ ✅ Keys added, seed run, webhook configured, migration applied
+5. **Supabase types** — Run `supabase gen types typescript` when CLI access is available
+6. **Vercel env vars** — Add all Stripe env vars to Vercel for production deployment
 
 ---
 
-_Generated: Feb 9, 2026 — Full app crawl. Updated: Feb 9, 2026 — All critical/high/medium items resolved. Google OAuth fix + marketing content push._
+_Generated: Feb 9, 2026 — Full app crawl. Updated: Feb 9, 2026 — Stripe billing fully integrated. All critical/high items resolved._
