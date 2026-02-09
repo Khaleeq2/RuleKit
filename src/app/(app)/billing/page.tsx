@@ -9,22 +9,18 @@ import {
   History,
   Zap,
   AlertTriangle,
+  Crown,
+  ExternalLink,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/app/components/ui/dialog';
+// Dialog imports retained for future use
 import { billingRepo } from '@/app/lib/billing';
-import { CreditBalance, CreditTransaction, TopUpPack, TOP_UP_PACKS } from '@/app/lib/types';
+import { subscriptionRepo } from '@/app/lib/subscriptions';
+import { CreditBalance, CreditTransaction, Subscription, TopUpPack, TOP_UP_PACKS, PLANS } from '@/app/lib/types';
 import { formatRelativeTime } from '@/app/lib/time-utils';
 import { toast } from 'sonner';
 
@@ -34,6 +30,7 @@ import { toast } from 'sonner';
 
 export default function BillingPage() {
   const [balance, setBalance] = useState<CreditBalance | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [usageStats, setUsageStats] = useState<{
     totalUsed: number;
@@ -42,19 +39,20 @@ export default function BillingPage() {
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [topUpOpen, setTopUpOpen] = useState(false);
-  const [selectedPack, setSelectedPack] = useState<TopUpPack | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   // Load data
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [balanceData, transactionsData, statsData] = await Promise.all([
+        const [balanceData, subscriptionData, transactionsData, statsData] = await Promise.all([
           billingRepo.getBalance(),
+          subscriptionRepo.get(),
           billingRepo.getTransactions({ limit: 20 }),
           billingRepo.getUsageStats(7),
         ]);
         setBalance(balanceData);
+        setSubscription(subscriptionData);
         setTransactions(transactionsData);
         setUsageStats(statsData);
       } catch (error) {
@@ -67,24 +65,49 @@ export default function BillingPage() {
 
     loadData();
 
-    const unsubscribe = billingRepo.subscribe(() => {
-      loadData();
-    });
+    const unsubBilling = billingRepo.subscribe(() => { loadData(); });
+    const unsubPlan = subscriptionRepo.subscribe(() => { loadData(); });
 
-    return unsubscribe;
+    return () => { unsubBilling(); unsubPlan(); };
   }, []);
 
-  const handleTopUp = async (pack: TopUpPack) => {
+  const handleBuyCredits = async (pack: TopUpPack) => {
+    setCheckoutLoading(pack.id);
     try {
-      await billingRepo.purchaseTopUp(pack.id);
-      setTopUpOpen(false);
-      setSelectedPack(null);
-      toast.success(`Added ${pack.credits} credits to your account`);
+      const url = await subscriptionRepo.createCheckoutSession('credit_pack', pack.id);
+      window.location.href = url;
     } catch (error) {
-      console.error('Failed to top up:', error);
-      toast.error('Failed to purchase credits');
+      console.error('Checkout error:', error);
+      toast.error('Failed to start checkout. Please try again.');
+      setCheckoutLoading(null);
     }
   };
+
+  const handleUpgradeToPro = async () => {
+    setCheckoutLoading('pro');
+    try {
+      const url = await subscriptionRepo.createCheckoutSession('subscription');
+      window.location.href = url;
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('Failed to start checkout. Please try again.');
+      setCheckoutLoading(null);
+    }
+  };
+
+  const handleManageBilling = async () => {
+    setCheckoutLoading('portal');
+    try {
+      const url = await subscriptionRepo.openCustomerPortal();
+      window.location.href = url;
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast.error('Failed to open billing portal.');
+      setCheckoutLoading(null);
+    }
+  };
+
+  const currentPlan = PLANS.find(p => p.id === (subscription?.plan || 'free'));
 
   if (isLoading) {
     return (
@@ -173,19 +196,79 @@ export default function BillingPage() {
               Billing & Credits
             </h1>
             <p className="text-[length:var(--font-size-body)] text-[var(--muted-foreground)] mt-1 leading-[var(--line-height-body)]">
-              Manage your credit balance and usage
+              Manage your plan, credits, and usage
             </p>
           </div>
-          <Button
-            disabled
-            className="opacity-60 cursor-not-allowed"
-            title="Payment integration coming soon"
-          >
-            <Zap className="w-4 h-4 mr-2" />
-            Top up credits
-            <span className="ml-2 text-[10px] font-medium uppercase tracking-wide bg-[var(--muted)] text-[var(--muted-foreground)] px-1.5 py-0.5 rounded">Soon</span>
-          </Button>
+          <div className="flex gap-2">
+            {subscription?.stripeCustomerId && (
+              <Button
+                variant="outline"
+                onClick={handleManageBilling}
+                disabled={checkoutLoading === 'portal'}
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                {checkoutLoading === 'portal' ? 'Opening...' : 'Manage billing'}
+              </Button>
+            )}
+            {(!subscription || subscription.plan === 'free') && (
+              <Button
+                onClick={handleUpgradeToPro}
+                disabled={checkoutLoading === 'pro'}
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                {checkoutLoading === 'pro' ? 'Redirecting...' : 'Upgrade to Pro'}
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* Plan Card */}
+        <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${subscription?.plan === 'pro' ? 'bg-[var(--brand)]/10' : 'bg-[var(--muted)]'}`}>
+                  {subscription?.plan === 'pro' ? (
+                    <Crown className="w-5 h-5 text-[var(--brand)]" />
+                  ) : (
+                    <Zap className="w-5 h-5 text-[var(--muted-foreground)]" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold text-[var(--foreground)]">
+                      {currentPlan?.name || 'Free'} Plan
+                    </h3>
+                    <Badge variant={subscription?.plan === 'pro' ? 'default' : 'secondary'} className="text-[10px]">
+                      {subscription?.status === 'active' ? 'Active' : subscription?.status || 'Active'}
+                    </Badge>
+                  </div>
+                  <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
+                    {currentPlan?.creditsPerMonth || 50} evaluations/month
+                    {subscription?.plan === 'pro' && ` · ${subscription.seatsIncluded} seats included`}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-semibold text-[var(--foreground)] tabular-nums">
+                  {currentPlan?.price === 0 ? 'Free' : currentPlan?.price === -1 ? 'Custom' : `$${currentPlan?.price}`}
+                </p>
+                {currentPlan?.period && <p className="text-xs text-[var(--muted-foreground)]">{currentPlan.period}</p>}
+              </div>
+            </div>
+            {subscription?.plan === 'pro' && subscription.seatCount > 0 && (
+              <div className="mt-4 pt-4 border-t border-[var(--border)] flex items-center gap-2 text-[13px] text-[var(--muted-foreground)]">
+                <Users className="w-4 h-4" />
+                {subscription.seatCount} of {subscription.seatsIncluded} included seats used
+                {subscription.seatCount > subscription.seatsIncluded && (
+                  <span className="text-[var(--foreground)] font-medium">
+                    · {subscription.seatCount - subscription.seatsIncluded} additional (+${(subscription.seatCount - subscription.seatsIncluded) * 5}/mo)
+                  </span>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
@@ -294,30 +377,31 @@ export default function BillingPage() {
             {/* Quick Top-Up */}
             <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)]">
               <CardHeader className="pb-2">
-                <CardTitle className="text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">Quick Top-Up</CardTitle>
-                <CardDescription className="text-[length:var(--font-size-body-sm)]">Add credits instantly</CardDescription>
+                <CardTitle className="text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">Buy Credits</CardTitle>
+                <CardDescription className="text-[length:var(--font-size-body-sm)]">Credits never expire</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {TOP_UP_PACKS.map((pack) => (
                   <button
                     key={pack.id}
-                    onClick={() => {
-                      setSelectedPack(pack);
-                      setTopUpOpen(true);
-                    }}
+                    onClick={() => handleBuyCredits(pack)}
+                    disabled={checkoutLoading === pack.id}
                     className={`
                       w-full flex items-center justify-between p-4 rounded-lg border transition-all
                       ${pack.popular
                         ? 'border-[var(--primary)] bg-[var(--primary)]/5'
                         : 'border-[var(--border)] hover:border-[var(--muted-foreground)]/30'
                       }
+                      ${checkoutLoading === pack.id ? 'opacity-60 cursor-wait' : ''}
                     `}
                   >
                     <div className="flex items-center gap-3">
                       <Coins className="w-5 h-5 text-[var(--muted-foreground)]" />
                       <div className="text-left">
                         <p className="font-medium text-[var(--foreground)]">{pack.credits} credits</p>
-                        <p className="text-[length:var(--font-size-meta)] text-[var(--muted-foreground)]">{pack.name}</p>
+                        <p className="text-[length:var(--font-size-meta)] text-[var(--muted-foreground)]">
+                          {checkoutLoading === pack.id ? 'Redirecting...' : pack.name}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -392,77 +476,3 @@ function TransactionRow({ transaction }: { transaction: CreditTransaction }) {
   );
 }
 
-// ============================================
-// Top-Up Dialog
-// ============================================
-
-function TopUpDialog({
-  packs,
-  selectedPack,
-  onSelectPack,
-  onConfirm,
-  onCancel,
-}: {
-  packs: TopUpPack[];
-  selectedPack: TopUpPack | null;
-  onSelectPack: (pack: TopUpPack) => void;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <DialogContent className="sm:max-w-[500px]">
-      <DialogHeader>
-        <DialogTitle>Top up credits</DialogTitle>
-        <DialogDescription>
-          Select a credit pack to add to your account
-        </DialogDescription>
-      </DialogHeader>
-      <div className="py-4 space-y-3">
-        {packs.map((pack) => (
-          <button
-            key={pack.id}
-            onClick={() => onSelectPack(pack)}
-            className={`
-              w-full flex items-center justify-between p-4 rounded-lg border transition-all
-              ${selectedPack?.id === pack.id
-                ? 'border-[var(--primary)] bg-[var(--primary)]/5'
-                : 'border-[var(--border)] hover:border-[var(--muted-foreground)]/30'
-              }
-            `}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                selectedPack?.id === pack.id
-                  ? 'border-[var(--primary)]'
-                  : 'border-[var(--muted-foreground)]/30'
-              }`}>
-                {selectedPack?.id === pack.id && (
-                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--primary)]" />
-                )}
-              </div>
-              <div className="text-left">
-                <p className="font-medium text-[var(--foreground)]">{pack.name}</p>
-                <p className="text-sm text-[var(--muted-foreground)]">{pack.credits} credits</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {pack.popular && (
-                <Badge className="rounded-full bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20 text-[10px] px-2 py-0.5 font-medium">
-                  Best value
-                </Badge>
-              )}
-              <span className="text-xl font-semibold text-[var(--foreground)]">${pack.price}</span>
-            </div>
-          </button>
-        ))}
-      </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={onConfirm} disabled={!selectedPack}>
-          <CreditCard className="w-4 h-4 mr-2" />
-          Purchase {selectedPack?.credits || ''} credits
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  );
-}

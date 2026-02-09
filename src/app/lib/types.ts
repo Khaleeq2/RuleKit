@@ -230,7 +230,7 @@ export interface CreditTransaction {
   createdAt: string;
 }
 
-export type TransactionType = 'usage' | 'topup' | 'monthly_reset' | 'refund';
+export type TransactionType = 'usage' | 'topup' | 'monthly_reset' | 'refund' | 'stripe_purchase' | 'plan_allowance';
 
 export interface TopUpPack {
   id: string;
@@ -241,10 +241,99 @@ export interface TopUpPack {
 }
 
 export const TOP_UP_PACKS: TopUpPack[] = [
-  { id: 'pack-10', name: 'Starter', credits: 50, price: 10 },
-  { id: 'pack-25', name: 'Growth', credits: 200, price: 25, popular: true },
-  { id: 'pack-50', name: 'Scale', credits: 500, price: 50 },
-  { id: 'pack-100', name: 'Power', credits: 1200, price: 100 },
+  { id: 'pack-starter', name: 'Starter', credits: 100, price: 10 },
+  { id: 'pack-growth', name: 'Growth', credits: 300, price: 25, popular: true },
+  { id: 'pack-scale', name: 'Scale', credits: 1000, price: 50 },
+];
+
+// ============================================
+// SUBSCRIPTIONS & PLANS
+// ============================================
+
+export type PlanId = 'free' | 'pro' | 'enterprise';
+export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete';
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  plan: PlanId;
+  status: SubscriptionStatus;
+  seatCount: number;
+  seatsIncluded: number;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlanDefinition {
+  id: PlanId;
+  name: string;
+  price: number;
+  period: string;
+  creditsPerMonth: number;
+  seatsIncluded: number;
+  pricePerExtraSeat: number;
+  features: string[];
+}
+
+export const PLANS: PlanDefinition[] = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: 0,
+    period: 'forever',
+    creditsPerMonth: 50,
+    seatsIncluded: 1,
+    pricePerExtraSeat: 0,
+    features: [
+      '50 evaluations / month',
+      '3 decisions',
+      '10 rules per decision',
+      'Community support',
+      'Single user',
+    ],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: 29,
+    period: '/ month',
+    creditsPerMonth: 500,
+    seatsIncluded: 3,
+    pricePerExtraSeat: 5,
+    features: [
+      '500 evaluations / month',
+      'Unlimited decisions',
+      'Unlimited rules',
+      'Version history & deployments',
+      'Priority support',
+      '3 team members included',
+      '+$5 / additional member',
+      'API access',
+    ],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: -1,
+    period: '',
+    creditsPerMonth: -1,
+    seatsIncluded: -1,
+    pricePerExtraSeat: 0,
+    features: [
+      'Unlimited evaluations',
+      'Unlimited everything',
+      'SSO & SAML',
+      'Audit logs & compliance',
+      'Dedicated support',
+      'Custom SLA',
+      'On-premise option',
+    ],
+  },
 ];
 
 // ============================================

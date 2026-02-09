@@ -34,12 +34,13 @@ const PLANS = [
     cta: { label: 'Start free trial', href: '/auth/sign-up' },
     highlight: true,
     features: [
-      '2,000 evaluations / month',
+      '500 evaluations / month',
       'Unlimited decisions',
       'Unlimited rules',
       'Version history & deployments',
       'Priority support',
-      'Up to 5 team members',
+      '3 team members included',
+      '+$5 / additional member',
       'API access',
     ],
   },
@@ -48,7 +49,7 @@ const PLANS = [
     price: 'Custom',
     period: '',
     description: 'For organizations with governance and scale requirements.',
-    cta: { label: 'Contact sales', href: '/company/contact' },
+    cta: { label: 'Contact sales', href: '/contact' },
     highlight: false,
     features: [
       'Unlimited evaluations',
@@ -63,9 +64,9 @@ const PLANS = [
 ] as const;
 
 const CREDIT_PACKS = [
-  { name: 'Starter', credits: 50, price: 10 },
-  { name: 'Growth', credits: 200, price: 25, popular: true },
-  { name: 'Scale', credits: 500, price: 50 },
+  { name: 'Starter', credits: 100, price: 10 },
+  { name: 'Growth', credits: 300, price: 25, popular: true },
+  { name: 'Scale', credits: 1000, price: 50 },
 ];
 
 export default function PricingPlansPage() {
