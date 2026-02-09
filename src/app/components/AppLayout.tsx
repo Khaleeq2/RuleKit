@@ -182,8 +182,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                   const isActive = activeNavId === item.id;
                   const Icon = item.icon;
 
+                  const tourId = item.id === 'decisions' ? 'tour-nav-decisions' : item.id === 'history' ? 'tour-nav-history' : undefined;
+
                   const navLink = (
                     <Link
+                      id={tourId}
                       href={item.href}
                       className={`
                         flex items-center gap-3 py-2.5 rounded-lg
@@ -218,8 +221,24 @@ export function AppLayout({ children }: AppLayoutProps) {
               </ul>
             </nav>
 
+            {/* Credits badge — tour target */}
+            <div className="px-2.5 pb-2">
+              <Link
+                id="tour-credits"
+                href="/billing"
+                className={`flex items-center gap-2 py-2 rounded-lg hover:bg-[var(--muted)]/70 transition-colors ${sidebarExpanded ? 'px-3' : 'justify-center'}`}
+              >
+                <Coins className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                {sidebarExpanded && (
+                  <span className="text-xs font-medium text-[var(--muted-foreground)]">
+                    {credits ? `${credits.balance} credits` : '...'}
+                  </span>
+                )}
+              </Link>
+            </div>
+
             {/* Bottom: User Menu */}
-            <div className="px-2.5 pt-3 pb-4">
+            <div className="px-2.5 pt-1 pb-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className={`flex items-center w-full p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors ${sidebarExpanded ? 'gap-2.5' : 'justify-center'}`}>

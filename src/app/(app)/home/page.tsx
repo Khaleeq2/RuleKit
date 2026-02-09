@@ -29,6 +29,11 @@ import type { EvaluateResponse, EvaluationResult } from '@/app/lib/evaluation-ty
 import { sessionsRepo, type Session, type SessionMessage } from '@/app/lib/sessions';
 import { formatRelativeTime } from '@/app/lib/time-utils';
 import { toast } from 'sonner';
+import { WelcomeModal } from '@/app/components/WelcomeModal';
+import { OnboardingChecklist } from '@/app/components/OnboardingChecklist';
+import { getOnboardingState, updateOnboardingState, seedDecisionIfNeeded, type OnboardingState } from '@/app/lib/onboarding';
+import { celebrationBurst } from '@/app/lib/confetti';
+import { useNextStep } from 'nextstepjs';
 
 // Types for the execution flow
 interface RuleCheck {
@@ -68,7 +73,15 @@ const DEFAULT_SUGGESTIONS: PromptSuggestion[] = [
   { title: 'Ask a question', content: 'What rules are active for this decision?' },
 ];
 
+// Onboarding-specific suggestions for the seeded Loan Eligibility decision
+const ONBOARDING_SUGGESTIONS: PromptSuggestion[] = [
+  { title: 'Try a passing case', content: 'John Smith, 28 years old, annual income $85,000, credit score 740' },
+  { title: 'Try a failing case', content: 'Sarah, age 17, income $20,000, credit score 580' },
+  { title: 'Try JSON format', content: '{ "name": "Alex Chen", "age": 35, "income": 120000, "credit_score": 780 }' },
+];
+
 export default function HomePage() {
+  const { startNextStep } = useNextStep();
   const [decisions, setDecisions] = useState<DecisionWithStats[]>([]);
   const [selectedDecision, setSelectedDecision] = useState<string>('');
   const [runInput, setRunInput] = useState('');
@@ -79,6 +92,12 @@ export default function HomePage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [recentSessions, setRecentSessions] = useState<Session[]>([]);
   const [activeRuleNames, setActiveRuleNames] = useState<string[]>([]);
+
+  // Onboarding state
+  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [checklistDismissed, setChecklistDismissed] = useState(false);
+  const firstEvalTrackedRef = useRef(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -139,18 +158,41 @@ export default function HomePage() {
     setTimeout(() => textareaRef.current?.focus(), 100);
   };
 
-  // Load decisions + recent sessions
+  // Load decisions + recent sessions + onboarding initialization
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [decisionsData, sessionsData] = await Promise.all([
+        // Load onboarding state first
+        const obState = await getOnboardingState();
+        setOnboarding(obState);
+
+        let [decisionsData, sessionsData] = await Promise.all([
           decisionsRepo.listWithStats(),
           sessionsRepo.list(),
         ]);
+
+        // If user has 0 decisions, seed the sample Loan Eligibility decision
+        if (decisionsData.length === 0) {
+          const seedResult = await seedDecisionIfNeeded();
+          if (seedResult.seeded && seedResult.decisionId) {
+            // Re-fetch decisions after seeding
+            decisionsData = await decisionsRepo.listWithStats();
+            // Update onboarding state with seed decision ID
+            await updateOnboardingState({ seedDecisionId: seedResult.decisionId });
+            obState.seedDecisionId = seedResult.decisionId;
+            setOnboarding({ ...obState });
+          }
+        }
+
         setDecisions(decisionsData);
         setRecentSessions(sessionsData.slice(0, 3));
         if (decisionsData.length > 0 && !selectedDecision) {
           setSelectedDecision(decisionsData[0].id);
+        }
+
+        // Show welcome modal for first-time users
+        if (!obState.welcomed && sessionsData.length === 0) {
+          setShowWelcome(true);
         }
       } catch (error) {
         console.error('Failed to load data:', error);
@@ -511,6 +553,18 @@ export default function HomePage() {
       };
 
       setMessages(prev => [...prev, systemMessage]);
+
+      // First evaluation celebration 🎉
+      if (onboarding && !onboarding.firstEvalDone && !firstEvalTrackedRef.current) {
+        firstEvalTrackedRef.current = true;
+        celebrationBurst();
+        toast.success('Your first verdict!', {
+          description: `RuleKit evaluated ${execution.rules.length} rules in ${execution.latencyMs}ms`,
+        });
+        const updated = { ...onboarding, firstEvalDone: true };
+        setOnboarding(updated);
+        updateOnboardingState({ firstEvalDone: true });
+      }
     } catch (error: any) {
       const msg = error.message || '';
       const isNoRules = msg.includes('No active rules');
@@ -566,8 +620,41 @@ export default function HomePage() {
   const hasMessages = messages.length > 0;
   const isBusy = isRunning || isStreaming;
 
+  // Welcome modal handlers
+  const handleWelcomeDismiss = async () => {
+    setShowWelcome(false);
+    await updateOnboardingState({ welcomed: true });
+    if (onboarding) setOnboarding({ ...onboarding, welcomed: true });
+    setTimeout(() => textareaRef.current?.focus(), 200);
+  };
+
+  const handleStartEvaluating = async () => {
+    await handleWelcomeDismiss();
+  };
+
+  const handleTakeTour = async () => {
+    setShowWelcome(false);
+    await updateOnboardingState({ welcomed: true, tourCompleted: false });
+    if (onboarding) setOnboarding({ ...onboarding, welcomed: true });
+    // Start the NextStepJS product tour after modal dismisses
+    setTimeout(() => {
+      startNextStep('welcome-tour');
+    }, 400);
+  };
+
+  // Show checklist if onboarding is active and not dismissed
+  const showChecklist = onboarding && !checklistDismissed && !onboarding.firstEvalDone;
+
   return (
     <div className="h-full relative overflow-hidden">
+      {/* Welcome Modal */}
+      {showWelcome && (
+        <WelcomeModal
+          onStartEvaluating={handleStartEvaluating}
+          onTakeTour={handleTakeTour}
+          onDismiss={handleWelcomeDismiss}
+        />
+      )}
       {hasMessages ? (
         /* ── Chat view: transparent top bar + masked scroll + solid bottom ── */
         <>
@@ -744,26 +831,30 @@ export default function HomePage() {
                 </div>
 
                 {/* Super Input Box */}
-                <SuperInput
-                  value={runInput}
-                  onChange={setRunInput}
-                  onSubmit={handleRun}
-                  onKeyDown={handleKeyDown}
-                  isFocused={isFocused}
-                  setIsFocused={setIsFocused}
-                  isRunning={isBusy}
-                  decisions={decisions}
-                  selectedDecision={selectedDecision}
-                  setSelectedDecision={setSelectedDecision}
-                  textareaRef={textareaRef}
-                  minRows={4}
-                />
+                <div id="tour-composer">
+                  <SuperInput
+                    value={runInput}
+                    onChange={setRunInput}
+                    onSubmit={handleRun}
+                    onKeyDown={handleKeyDown}
+                    isFocused={isFocused}
+                    setIsFocused={setIsFocused}
+                    isRunning={isBusy}
+                    decisions={decisions}
+                    selectedDecision={selectedDecision}
+                    setSelectedDecision={setSelectedDecision}
+                    textareaRef={textareaRef}
+                    minRows={4}
+                  />
+                </div>
 
-                {/* Suggested prompts — short titles, full content fills on click */}
+                {/* Suggested prompts — context-aware for onboarding */}
                 {(() => {
-                  const suggestions = DEFAULT_SUGGESTIONS;
+                  // Use onboarding suggestions when the seed decision is selected
+                  const isSeedDecision = onboarding?.seedDecisionId && selectedDecision === onboarding.seedDecisionId;
+                  const suggestions = isSeedDecision ? ONBOARDING_SUGGESTIONS : DEFAULT_SUGGESTIONS;
                   return (
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
                       <span className="text-[11px] text-[var(--muted-foreground)]">Try:</span>
                       {suggestions.map((s, i) => (
                         <button
@@ -782,6 +873,22 @@ export default function HomePage() {
 
               {/* Flexible gap — adapts to screen height, min 32px */}
               <div className="flex-1 min-h-8" />
+
+              {/* Onboarding Checklist */}
+              {showChecklist && onboarding && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.4 }}
+                  className="w-full flex justify-center"
+                  style={{ maxWidth: CONTENT_MAX_W }}
+                >
+                  <OnboardingChecklist
+                    state={onboarding}
+                    onDismiss={() => setChecklistDismissed(true)}
+                  />
+                </motion.div>
+              )}
 
               {/* Recent sessions — visually separated section */}
               {recentSessions.length > 0 && (
@@ -1031,7 +1138,7 @@ function SuperInput({
           {/* Decision Selector — full dropdown in empty state, static label in chat */}
           {showDecisionSelector ? (
             <Select value={selectedDecision} onValueChange={setSelectedDecision}>
-              <SelectTrigger className="w-auto h-8 rounded-lg px-3 gap-2 text-xs font-medium bg-[var(--muted)] hover:bg-[var(--secondary-hover)] border border-[var(--border)]/60 shadow-none transition-all focus:ring-0">
+              <SelectTrigger id="tour-decision-selector" className="w-auto h-8 rounded-lg px-3 gap-2 text-xs font-medium bg-[var(--muted)] hover:bg-[var(--secondary-hover)] border border-[var(--border)]/60 shadow-none transition-all focus:ring-0">
                 <GitBranch className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
                 <span className="max-w-[140px] truncate text-[var(--foreground)]">
                   {decisions.find(d => d.id === selectedDecision)?.name || "Select ruleset"}
