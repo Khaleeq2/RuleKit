@@ -8,6 +8,7 @@
 import { NextRequest } from 'next/server';
 import { GroqConfigError } from '@/app/lib/groq-client';
 import { checkRateLimit } from '@/app/lib/rate-limit';
+import { getAuthenticatedUser } from '@/app/lib/api-auth';
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 const GROQ_MODEL = 'openai/gpt-oss-20b';
@@ -83,6 +84,15 @@ function getApiKey(): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // Auth check
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const { allowed } = checkRateLimit(`chat:${ip}`, { maxRequests: 15, windowMs: 60_000 });
     if (!allowed) {

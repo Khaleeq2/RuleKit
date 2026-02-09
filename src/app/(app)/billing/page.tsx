@@ -41,6 +41,7 @@ export default function BillingPage() {
     dailyUsage: { date: string; amount: number }[];
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [selectedPack, setSelectedPack] = useState<TopUpPack | null>(null);
 
@@ -58,6 +59,7 @@ export default function BillingPage() {
         setUsageStats(statsData);
       } catch (error) {
         console.error('Failed to load billing data:', error);
+        setLoadError('Failed to load billing data. Check your connection and try again.');
       } finally {
         setIsLoading(false);
       }
@@ -140,6 +142,27 @@ export default function BillingPage() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="min-h-full">
+        <div className="max-w-[1400px] mx-auto px-6 py-6">
+          <div className="py-16 text-center">
+            <AlertTriangle className="w-6 h-6 text-amber-500 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-[var(--foreground)] mb-1 tracking-tight">
+              Something went wrong
+            </h3>
+            <p className="text-[13px] text-[var(--muted-foreground)] mb-4">
+              {loadError}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Try again
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-full">
       <div className="max-w-[1400px] mx-auto px-6 py-6">
@@ -153,24 +176,15 @@ export default function BillingPage() {
               Manage your credit balance and usage
             </p>
           </div>
-          <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Zap className="w-4 h-4 mr-2" />
-                Top up credits
-              </Button>
-            </DialogTrigger>
-            <TopUpDialog
-              packs={TOP_UP_PACKS}
-              selectedPack={selectedPack}
-              onSelectPack={setSelectedPack}
-              onConfirm={() => selectedPack && handleTopUp(selectedPack)}
-              onCancel={() => {
-                setTopUpOpen(false);
-                setSelectedPack(null);
-              }}
-            />
-          </Dialog>
+          <Button
+            disabled
+            className="opacity-60 cursor-not-allowed"
+            title="Payment integration coming soon"
+          >
+            <Zap className="w-4 h-4 mr-2" />
+            Top up credits
+            <span className="ml-2 text-[10px] font-medium uppercase tracking-wide bg-[var(--muted)] text-[var(--muted-foreground)] px-1.5 py-0.5 rounded">Soon</span>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

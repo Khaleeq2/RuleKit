@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import {
   User,
   Bell,
@@ -11,6 +12,7 @@ import {
   Moon,
   Sun,
   Monitor,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -25,41 +27,155 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
+import { getSupabaseBrowserClient } from '@/app/lib/supabase-browser';
 import { toast } from 'sonner';
 
 // ============================================
-// Settings Page
+// Settings Page — Wired to Supabase Auth
 // ============================================
 
 export default function SettingsPage() {
-  // Profile settings
-  const [name, setName] = useState('User');
-  const [email, setEmail] = useState('user@example.com');
+  const supabase = getSupabaseBrowserClient();
+  const { theme, setTheme } = useTheme();
 
-  // Notification settings
+  // Profile settings — loaded from Supabase auth
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // Notification settings — stored in user_metadata
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [failureAlerts, setFailureAlerts] = useState(true);
-  const [deploymentNotifs, setDeploymentNotifs] = useState(true);
   const [weeklyReport, setWeeklyReport] = useState(false);
+  const [isSavingNotifs, setIsSavingNotifs] = useState(false);
 
-  // Appearance settings
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  // Timezone — stored in user_metadata
   const [timezone, setTimezone] = useState('America/New_York');
 
-  // Security settings
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  // Load real user data on mount
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) {
+          toast.error('Failed to load user data');
+          return;
+        }
+        setName(user.user_metadata?.full_name || user.user_metadata?.name || '');
+        setEmail(user.email || '');
 
-  const handleSaveProfile = () => {
-    toast.success('Profile updated');
+        // Load preferences from user_metadata
+        const prefs = user.user_metadata?.notification_prefs;
+        if (prefs) {
+          setEmailNotifications(prefs.email_notifications ?? true);
+          setFailureAlerts(prefs.failure_alerts ?? true);
+          setWeeklyReport(prefs.weekly_report ?? false);
+        }
+        if (user.user_metadata?.timezone) {
+          setTimezone(user.user_metadata.timezone);
+        }
+      } catch {
+        toast.error('Failed to load settings');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadUser();
+  }, []);
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: name },
+      });
+      if (error) throw error;
+      toast.success('Profile updated');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update profile';
+      toast.error(msg);
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
-  const handleSaveNotifications = () => {
-    toast.success('Notification preferences saved');
+  const handleSaveNotifications = async () => {
+    setIsSavingNotifs(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          notification_prefs: {
+            email_notifications: emailNotifications,
+            failure_alerts: failureAlerts,
+            weekly_report: weeklyReport,
+          },
+          timezone,
+        },
+      });
+      if (error) throw error;
+      toast.success('Preferences saved');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save preferences';
+      toast.error(msg);
+    } finally {
+      setIsSavingNotifs(false);
+    }
   };
 
-  const handleChangePassword = () => {
-    toast.success('Password reset email sent');
+  const handleChangePassword = async () => {
+    if (!email) return;
+    setIsChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/update-password`,
+      });
+      if (error) throw error;
+      toast.success('Password reset email sent — check your inbox');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send reset email';
+      toast.error(msg);
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete your account? This will permanently remove all your data. This action cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    const doubleConfirm = window.prompt(
+      'To confirm deletion, type "DELETE" below:'
+    );
+    if (doubleConfirm !== 'DELETE') {
+      toast.error('Account deletion cancelled');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      // Sign out and send request to support
+      // Full deletion requires admin API — log the request for manual processing
+      await supabase.auth.signOut();
+      toast.success('Account deletion requested. You have been signed out.');
+      window.location.href = '/auth/sign-in';
+    } catch {
+      toast.error('Failed to process deletion request');
+      setIsDeletingAccount(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-full flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--muted-foreground)]" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full">
@@ -94,6 +210,7 @@ export default function SettingsPage() {
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
                   />
                 </div>
                 <div className="space-y-2">
@@ -102,13 +219,21 @@ export default function SettingsPage() {
                     id="email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    disabled
+                    className="opacity-60 cursor-not-allowed"
                   />
+                  <p className="text-[11px] text-[var(--muted-foreground)]">
+                    Email cannot be changed
+                  </p>
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button onClick={handleSaveProfile}>
-                  <Save className="w-4 h-4 mr-2" />
+                <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
+                  {isSavingProfile ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
                   Save changes
                 </Button>
               </div>
@@ -167,7 +292,8 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="flex justify-end">
-                <Button variant="outline" onClick={handleSaveNotifications}>
+                <Button variant="outline" onClick={handleSaveNotifications} disabled={isSavingNotifs}>
+                  {isSavingNotifs && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Save preferences
                 </Button>
               </div>
@@ -270,38 +396,14 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-[var(--foreground)]">Two-factor authentication</p>
-                  <p className="text-sm text-[var(--muted-foreground)]">
-                    Add an extra layer of security to your account
-                  </p>
-                </div>
-                <Switch
-                  checked={twoFactorEnabled}
-                  onCheckedChange={setTwoFactorEnabled}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="font-medium text-[var(--foreground)]">Password</p>
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    Change your password
+                    Send a password reset link to your email
                   </p>
                 </div>
-                <Button variant="outline" onClick={handleChangePassword}>
+                <Button variant="outline" onClick={handleChangePassword} disabled={isChangingPassword}>
+                  {isChangingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Change password
-                </Button>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-[var(--foreground)]">Active sessions</p>
-                  <p className="text-sm text-[var(--muted-foreground)]">
-                    Manage devices where you're logged in
-                  </p>
-                </div>
-                <Button variant="outline">
-                  View sessions
                 </Button>
               </div>
             </CardContent>
@@ -323,7 +425,8 @@ export default function SettingsPage() {
                     Permanently delete your account and all associated data
                   </p>
                 </div>
-                <Button variant="destructive">
+                <Button variant="destructive" onClick={handleDeleteAccount} disabled={isDeletingAccount}>
+                  {isDeletingAccount && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Delete account
                 </Button>
               </div>

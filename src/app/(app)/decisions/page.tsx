@@ -13,6 +13,7 @@ import {
   Pencil,
   Copy,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -42,6 +43,7 @@ export default function DecisionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | DecisionStatus>('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Load decisions
@@ -52,7 +54,7 @@ export default function DecisionsPage() {
         setDecisions(data);
       } catch (error) {
         console.error('Failed to load decisions:', error);
-        toast.error('Failed to load decisions');
+        setLoadError('Failed to load rules. Check your connection and try again.');
       } finally {
         setIsLoading(false);
       }
@@ -104,11 +106,13 @@ export default function DecisionsPage() {
 
   const handleDuplicate = async (decision: DecisionWithStats) => {
     try {
+      const supabase = (await import('@/app/lib/supabase-browser')).getSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
       const newDecision = await decisionsRepo.create({
         name: `${decision.name} (copy)`,
         description: decision.description,
         status: 'draft',
-        createdBy: 'user-1',
+        createdBy: user?.id || 'unknown',
       });
       toast.success('Decision duplicated');
       router.push(`/decisions/${newDecision.id}`);
@@ -201,7 +205,22 @@ export default function DecisionsPage() {
         </div>
 
         {/* Table */}
-        {isLoading ? (
+        {loadError ? (
+          <div className="surface-layered surface-grain">
+            <div className="py-16 text-center px-6">
+              <AlertTriangle className="w-6 h-6 text-amber-500 mx-auto mb-3" />
+              <h3 className="text-base font-semibold text-[var(--foreground)] mb-1 tracking-tight">
+                Something went wrong
+              </h3>
+              <p className="text-[13px] text-[var(--muted-foreground)]/60 mb-4">
+                {loadError}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                Try again
+              </Button>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="surface-layered surface-grain overflow-hidden">
             <div className="glass-header hidden md:grid grid-cols-[1fr_100px_100px_120px_56px] gap-4 px-5 py-2.5 text-[11px] text-[var(--muted-foreground)]/60 uppercase tracking-[0.06em] font-semibold">
               <span>Rule</span>

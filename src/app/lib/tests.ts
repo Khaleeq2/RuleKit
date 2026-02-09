@@ -146,21 +146,77 @@ export const testsRepo = {
       throw new Error(`Test with id ${id} not found`);
     }
 
-    // Simulate test execution
-    // In production, this would call the actual decision engine via /api/evaluate
-    const latencyMs = Math.floor(Math.random() * 50) + 20;
+    // Fetch decision info and rules for real evaluation
+    const { decisionsRepo, rulesRepo } = await import('./decisions');
+    const decision = await decisionsRepo.getById(test.decisionId);
+    if (!decision) {
+      throw new Error('Decision not found for this test');
+    }
 
-    const actualDecision = test.expectedDecision;
-    const actualReason = test.expectedReason || (actualDecision === 'pass' ? 'Decision passed' : 'Decision failed');
+    const rules = await rulesRepo.listByDecisionId(test.decisionId);
+    const enabledRules = rules.filter(r => r.enabled);
+
+    if (enabledRules.length === 0) {
+      throw new Error('No active rules found. Add rules before running tests.');
+    }
+
+    const inputStr = typeof test.inputJson === 'string'
+      ? test.inputJson
+      : JSON.stringify(test.inputJson);
+
+    const startMs = performance.now();
+
+    // Call the real evaluation API
+    const res = await fetch('/api/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: inputStr,
+        decision_id: test.decisionId,
+        decision_name: decision.name,
+        rules: enabledRules.map(r => ({
+          id: r.id,
+          name: r.name,
+          description: r.description || r.name,
+          reason: r.reason || '',
+        })),
+      }),
+    });
+
+    const latencyMs = Math.round(performance.now() - startMs);
+    const data = await res.json();
+
+    let actualDecision: RuleResult = 'fail';
+    let actualReason = 'Evaluation failed';
+    let firedRuleId: string | null = null;
+    let firedRuleName: string | null = null;
+
+    if (data.success && data.result) {
+      actualDecision = data.result.verdict as RuleResult;
+      actualReason = data.result.reason || '';
+
+      // Find the first failing rule (or first rule that determined the outcome)
+      const firedRule = data.result.evaluations?.find(
+        (e: { verdict: string }) => e.verdict === actualDecision
+      );
+      if (firedRule) {
+        firedRuleId = firedRule.rule_id;
+        firedRuleName = firedRule.rule_name;
+      }
+    } else if (data.error) {
+      actualReason = data.error;
+    }
+
+    const passed = actualDecision === test.expectedDecision;
 
     const result: TestResult = {
       id: `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`,
       testId: id,
-      passed: true,
+      passed,
       actualDecision,
       actualReason,
-      firedRuleId: null,
-      firedRuleName: null,
+      firedRuleId,
+      firedRuleName,
       executionTrace: [],
       creditsUsed: 1,
       latencyMs,

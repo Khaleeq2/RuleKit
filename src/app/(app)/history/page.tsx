@@ -51,6 +51,7 @@ export default function HistoryPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [decisionFilter, setDecisionFilter] = useState<string>('all');
   const [envFilter, setEnvFilter] = useState<'all' | Environment>('all');
@@ -70,6 +71,7 @@ export default function HistoryPage() {
         setDecisions(decisionsData);
       } catch (error) {
         console.error('Failed to load data:', error);
+        setLoadError('Failed to load history. Check your connection and try again.');
       } finally {
         setIsLoading(false);
       }
@@ -166,6 +168,22 @@ export default function HistoryPage() {
             Refresh
           </Button>
         </div>
+
+        {/* Error State */}
+        {loadError && (
+          <div className="mb-6 p-6 rounded-xl bg-[var(--card)] border border-[var(--border)] text-center">
+            <AlertTriangle className="w-6 h-6 text-amber-500 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-[var(--foreground)] mb-1 tracking-tight">
+              Something went wrong
+            </h3>
+            <p className="text-[13px] text-[var(--muted-foreground)] mb-4">
+              {loadError}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Try again
+            </Button>
+          </div>
+        )}
 
         {/* Tab Toggle */}
         <div className="flex items-center gap-1 mb-5 bg-[var(--muted)]/50 rounded-lg p-1 w-fit">
@@ -550,7 +568,7 @@ function RunRow({ run, isEven }: { run: Run; isEven: boolean }) {
 // ============================================
 
 function SessionRow({ session, isEven }: { session: Session; isEven: boolean }) {
-  const reason = session.messages.find(m => m.evaluation)?.evaluation?.reason;
+  const reason = session.messages.find((m: { evaluation?: { reason?: string } }) => m.evaluation)?.evaluation?.reason;
 
   return (
     <Link

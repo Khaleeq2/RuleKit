@@ -105,38 +105,6 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-[var(--card)] rounded-2xl shadow-[var(--shadow-card)] border border-[var(--border)] p-8">
-          {/* Google OAuth */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={googleLoading}
-            className="w-full h-11 flex items-center justify-center gap-3 text-sm font-medium text-[var(--foreground)] bg-[var(--background)] border border-[var(--border)] rounded-xl hover:bg-[var(--muted)] hover:border-[var(--muted-foreground)]/30 transition-all duration-200 disabled:opacity-50"
-          >
-            {googleLoading ? (
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            ) : (
-              <>
-                <GoogleIcon className="w-4 h-4" />
-                Continue with Google
-              </>
-            )}
-          </button>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[var(--border)]" />
-            </div>
-            <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
-              <span className="bg-[var(--card)] px-3 text-[var(--muted-foreground)]">
-                or continue with email
-              </span>
-            </div>
-          </div>
-
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-sm font-medium text-[var(--foreground)]">
@@ -192,6 +160,38 @@ export default function LoginPage() {
               ) : 'Sign in'}
             </Button>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[var(--border)]" />
+            </div>
+            <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
+              <span className="bg-[var(--card)] px-3 text-[var(--muted-foreground)]">
+                or continue with Google
+              </span>
+            </div>
+          </div>
+
+          {/* Google OAuth */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={googleLoading}
+            className="w-full h-11 flex items-center justify-center gap-3 text-sm font-medium text-[var(--foreground)] bg-[var(--background)] border border-[var(--border)] rounded-xl hover:bg-[var(--muted)] hover:border-[var(--muted-foreground)]/30 transition-all duration-200 disabled:opacity-50"
+          >
+            {googleLoading ? (
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            ) : (
+              <>
+                <GoogleIcon className="w-4 h-4" />
+                Continue with Google
+              </>
+            )}
+          </button>
         </div>
 
         {/* Footer */}

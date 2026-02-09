@@ -9,9 +9,19 @@ import { evaluateRules } from '@/app/lib/groq-evaluator';
 import { GroqConfigError, GroqTransientError, GroqValidationError } from '@/app/lib/groq-client';
 import type { EvaluateRequest, EvaluateResponse } from '@/app/lib/evaluation-types';
 import { checkRateLimit } from '@/app/lib/rate-limit';
+import { getAuthenticatedUser } from '@/app/lib/api-auth';
 
 export async function POST(req: NextRequest): Promise<NextResponse<EvaluateResponse>> {
   try {
+    // Auth check
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required', error_type: 'unknown' },
+        { status: 401 }
+      );
+    }
+
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const { allowed, remaining } = checkRateLimit(`evaluate:${ip}`, { maxRequests: 20, windowMs: 60_000 });
     if (!allowed) {

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createGroqChatCompletion, GROQ_MODEL } from '@/app/lib/groq-client';
 import { checkRateLimit } from '@/app/lib/rate-limit';
+import { getAuthenticatedUser } from '@/app/lib/api-auth';
 
 interface TitleRequest {
   userMessage: string;
@@ -22,6 +23,15 @@ interface TitleResponse {
 
 export async function POST(req: NextRequest): Promise<NextResponse<TitleResponse>> {
   try {
+    // Auth check
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const { allowed } = checkRateLimit(`title:${ip}`, { maxRequests: 30, windowMs: 60_000 });
     if (!allowed) {

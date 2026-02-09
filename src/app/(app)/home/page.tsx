@@ -98,7 +98,7 @@ export default function HomePage() {
       return;
     }
 
-    const loadedMessages: Message[] = session.messages.map(sm => {
+    const loadedMessages: Message[] = session.messages.map((sm: SessionMessage) => {
       const msg: Message = {
         id: sm.id,
         type: sm.type,
@@ -114,7 +114,7 @@ export default function HomePage() {
           input: ev.input || '',
           verdict: ev.verdict,
           reason: ev.reason,
-          rules: ev.evaluations.map(e => ({
+          rules: ev.evaluations.map((e: { rule_id: string; rule_name: string; verdict: string; reason: string }) => ({
             id: e.rule_id,
             name: e.rule_name,
             status: e.verdict === 'pass' ? 'passed' as const : 'failed' as const,
@@ -166,8 +166,8 @@ export default function HomePage() {
       for (const s of needsTitles) {
         // Skip the active session — auto-save handles its title via titleGeneratedRef
         if (s.id === sessionId) continue;
-        const firstUser = s.messages.find(m => m.type === 'user')?.content;
-        const verdict = s.messages.find(m => m.evaluation)?.evaluation?.verdict ?? null;
+        const firstUser = s.messages.find((m: SessionMessage) => m.type === 'user')?.content;
+        const verdict = s.messages.find((m: SessionMessage) => m.evaluation)?.evaluation?.verdict ?? null;
         if (!firstUser) continue;
         try {
           const res = await fetch('/api/title', {
@@ -232,8 +232,8 @@ export default function HomePage() {
       }
 
       // Generate AI title after first evaluation (background, fire-and-forget)
-      const hasEval = sessionMessages.some(m => m.evaluation);
-      const firstUserMsg = sessionMessages.find(m => m.type === 'user')?.content;
+      const hasEval = sessionMessages.some((m: SessionMessage) => m.evaluation);
+      const firstUserMsg = sessionMessages.find((m: SessionMessage) => m.type === 'user')?.content;
       if (hasEval && firstUserMsg && !titleGeneratedRef.current && currentSessionId) {
         titleGeneratedRef.current = true;
         const verdict = sessionMessages.find(m => m.evaluation)?.evaluation?.verdict ?? null;
@@ -242,12 +242,12 @@ export default function HomePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userMessage: firstUserMsg, decisionName, verdict }),
         })
-          .then(r => r.json())
-          .then(data => {
+          .then((r: Response) => r.json())
+          .then((data: { success: boolean; title?: string }) => {
             if (data.success && data.title) {
               sessionsRepo.updateTitle(currentSessionId!, data.title);
               // Refresh recent sessions so new title appears
-              sessionsRepo.list().then(s => setRecentSessions(s.slice(0, 3)));
+              sessionsRepo.list().then((s: Session[]) => setRecentSessions(s.slice(0, 3)));
             }
           })
           .catch(() => {}); // Fail silently — template title remains
@@ -264,17 +264,17 @@ export default function HomePage() {
 
     // Fetch real rules for this decision
     const decisionRules = await rulesRepo.listByDecisionId(decisionId);
-    const enabledRules = decisionRules.filter(r => r.enabled);
+    const enabledRules = decisionRules.filter((r: { enabled: boolean }) => r.enabled);
 
     if (enabledRules.length === 0) {
       throw new Error('No active rules found for this ruleset. Add rules in the Rules page first.');
     }
 
     // Store rule names for the loading skeleton
-    setActiveRuleNames(enabledRules.map(r => r.name));
+    setActiveRuleNames(enabledRules.map((r: { name: string }) => r.name));
 
     // Call the Groq evaluation API
-    const evaluatorRules = enabledRules.map(r => ({
+    const evaluatorRules = enabledRules.map((r: { id: string; name: string; description: string; reason: string }) => ({
       id: r.id,
       name: r.name,
       description: r.description,
@@ -795,7 +795,7 @@ export default function HomePage() {
                   <p className="text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide text-center">Recent</p>
                   <div className="grid gap-2 px-1 pb-1 -mx-1 -mb-1">
                     {recentSessions.map(s => {
-                      const reason = s.messages.find(m => m.evaluation)?.evaluation?.reason;
+                      const reason = s.messages.find((m: SessionMessage) => m.evaluation)?.evaluation?.reason;
                       const verdictLabel = s.verdict === 'pass' ? 'Passed' : s.verdict === 'fail' ? 'Failed' : 'Pending';
                       return (
                         <button
