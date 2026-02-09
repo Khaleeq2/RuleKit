@@ -10,11 +10,7 @@
 ### Auth & Security
 - [x] **Auth middleware** — `middleware.ts` checks Supabase session cookies and redirects unauthenticated users to `/auth/sign-in`. ✅ Already existed.
 - [x] **API routes verify auth** — Created `api-auth.ts` shared helper. All 3 API routes (`/api/evaluate`, `/api/chat`, `/api/title`) now verify Supabase session before processing. Returns 401 if unauthenticated.
-- [ ] **Google OAuth not configured in Supabase** — ⚠️ **USER ACTION REQUIRED**:
-  1. Create a Google Cloud OAuth 2.0 Client ID (Web application type)
-  2. Set authorized redirect URI to: `https://zuwwilbgzowfahzgnfsw.supabase.co/auth/v1/callback`
-  3. In Supabase Dashboard → Authentication → Providers → Google: enable it and paste Client ID + Client Secret
-  4. `.env.local` already has `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` set (for reference only)
+- [x] **Google OAuth configured** — Client ID + Secret set in Supabase Dashboard. OAuth callback route rewritten to use `@supabase/ssr` `createServerClient` with proper cookie persistence (was the root cause of redirect loop).
 - [x] **Service role key** — `.gitignore` covers `.env.local`. Key is not exposed publicly. ✅
 - [x] **`createdBy: 'user-1'` hardcoded** — Fixed in `decisions/page.tsx` `handleDuplicate`. Now uses `supabase.auth.getUser()` to get real user ID.
 
@@ -23,7 +19,7 @@
 - [x] **Test runner wired to real API** — `testsRepo.runTest()` now calls `/api/evaluate` with real decision rules, compares actual verdict against expected, and reports pass/fail accurately.
 
 ### Environment
-- [ ] **DATABASE_URL `@` in password** — ⚠️ **USER ACTION**: Verify the trailing `@` in the password is URL-encoded (`%40`) if using the DATABASE_URL directly (e.g., with Supabase CLI).
+- [x] **DATABASE_URL `@` in password** — Fixed by user: `encodewetrust%40` is now properly URL-encoded in `.env.local`.
 
 ---
 
@@ -41,6 +37,7 @@
 - [x] **Error states on all key pages** — Decisions, history, and billing pages now show clear error messages with "Try again" button when Supabase fails.
 - [x] **Rate limiting** — Already implemented on all 4 API routes (`/api/evaluate`, `/api/chat`, `/api/title`, `/api/contact`). ✅ Already existed.
 - [ ] **Email confirmation flow** — After sign-up, there's no resend-confirmation option. Low-risk for MVP (Supabase sends the email automatically).
+- [x] **Google OAuth redirect loop fixed** — Callback route `/auth/callback` was using plain `createClient` which couldn't write cookies. Rewritten with `@supabase/ssr` `createServerClient` that persists session cookies on the response.
 
 ### UX Gaps
 - [x] **Auth page UI** — Google OAuth moved below email form. Divider now reads "or continue with Google".
@@ -53,10 +50,11 @@
 ### UI Consistency
 - [x] **Implicit `any` types** — All ~10 implicit `any` parameters in `home/page.tsx` and `history/page.tsx` now have explicit type annotations.
 - [ ] **Design token inconsistency** — Mix of CSS var references and Tailwind utilities. Not blocking but worth unifying post-launch.
+- [x] **Marketing sub-pages** — All 19 sub-pages now have rich content sections (2-3 sections each) with real copy. "Under development" banner removed. Section index pages redirect to their real dedicated pages.
 - [x] **Dark mode** — `next-themes` ThemeProvider wired in root layout. Settings page theme toggle connected. Works with system preference.
 
 ### Content & Marketing
-- [ ] **11 marketing sub-pages** still use `PublicPageTemplate` with placeholder content. Real copy is a business decision.
+- [x] **Marketing sub-pages** — All sub-pages enriched with real content sections. PublicPageTemplate upgraded with optional sections array. "Under development" banner removed.
 - [x] **Contact page** — `/contact` + `/api/contact` functional with Resend integration. ✅
 - [x] **SEO** — OG images, meta tags, sitemap all functional. ✅
 
@@ -93,16 +91,20 @@
 - [x] Rate limiting on all API routes
 - [x] Dark mode via `next-themes`
 - [x] Build passing clean (zero errors)
+- [x] Google OAuth callback fixed — `@supabase/ssr` `createServerClient` with cookie persistence
+- [x] All marketing sub-pages enriched with real content (19 pages, 2-3 sections each)
+- [x] Section index pages redirect to dedicated real pages
+- [x] DATABASE_URL encoding fixed
 
 ---
 
 ## ⚠️ USER ACTION REQUIRED
 
-1. **Google OAuth in Supabase Dashboard** — Enter Client ID + Secret in Supabase → Auth → Providers → Google
-2. **DATABASE_URL `@` encoding** — Verify the trailing `@` in password doesn't break Supabase CLI
-3. **Marketing sub-page content** — 11 pages have placeholder content; real copy is a business decision
+1. ~~**Google OAuth in Supabase Dashboard**~~ ✅ Done
+2. ~~**DATABASE_URL `@` encoding**~~ ✅ Fixed (`%40`)
+3. ~~**Marketing sub-page content**~~ ✅ All 19 pages enriched with real content
 4. **Supabase types** — Run `supabase gen types typescript` when CLI access is available
 
 ---
 
-_Generated: Feb 9, 2026 — Full app crawl. Updated: Feb 9, 2026 — All critical/high items resolved._
+_Generated: Feb 9, 2026 — Full app crawl. Updated: Feb 9, 2026 — All critical/high/medium items resolved. Google OAuth fix + marketing content push._

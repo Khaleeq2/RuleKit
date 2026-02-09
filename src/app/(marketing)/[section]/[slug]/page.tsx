@@ -63,6 +63,7 @@ export default async function SectionDetailPage({
       title={data.title}
       description={data.description}
       bullets={data.bullets}
+      sections={data.sections}
       primaryCta={data.primaryCta}
       secondaryCta={data.secondaryCta}
     />
