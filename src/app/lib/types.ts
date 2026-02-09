@@ -40,7 +40,7 @@ export interface Schema {
   updatedAt: string;
 }
 
-export type OutputType = 'pass_fail' | 'score' | 'custom';
+export type OutputType = 'pass_fail' | 'pass_flag_fail' | 'risk_level';
 
 export interface SchemaField {
   id: string;
@@ -72,7 +72,7 @@ export interface Rule {
   updatedAt: string;
 }
 
-export type RuleResult = 'pass' | 'fail';
+export type RuleResult = 'pass' | 'fail' | 'flag' | 'low' | 'medium' | 'high' | 'critical';
 
 export interface RuleCondition {
   type: ConditionType;
@@ -291,8 +291,8 @@ export const PLANS: PlanDefinition[] = [
     pricePerExtraSeat: 0,
     features: [
       '50 evaluations / month',
-      '3 decisions',
-      '10 rules per decision',
+      '3 rulesets',
+      '10 rules per ruleset',
       'Community support',
       'Single user',
     ],
@@ -307,7 +307,7 @@ export const PLANS: PlanDefinition[] = [
     pricePerExtraSeat: 5,
     features: [
       '500 evaluations / month',
-      'Unlimited decisions',
+      'Unlimited rulesets',
       'Unlimited rules',
       'Version history & deployments',
       'Priority support',
@@ -485,6 +485,37 @@ export const ENVIRONMENT_LABELS: Record<Environment, string> = {
 export const RULE_RESULT_LABELS: Record<RuleResult, string> = {
   pass: 'Pass',
   fail: 'Fail',
+  flag: 'Flag',
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  critical: 'Critical',
+};
+
+export const OUTPUT_TYPE_META: Record<OutputType, {
+  label: string;
+  description: string;
+  verdicts: RuleResult[];
+  colors: Record<string, string>;
+}> = {
+  pass_fail: {
+    label: 'Pass / Fail',
+    description: 'Binary result — each rule either passes or fails',
+    verdicts: ['pass', 'fail'],
+    colors: { pass: 'emerald', fail: 'red' },
+  },
+  pass_flag_fail: {
+    label: 'Pass / Flag / Fail',
+    description: 'Three-tier result — flag means needs human review',
+    verdicts: ['pass', 'flag', 'fail'],
+    colors: { pass: 'emerald', flag: 'amber', fail: 'red' },
+  },
+  risk_level: {
+    label: 'Risk Level',
+    description: 'Four-tier risk assessment — Low, Medium, High, Critical',
+    verdicts: ['low', 'medium', 'high', 'critical'],
+    colors: { low: 'emerald', medium: 'amber', high: 'orange', critical: 'red' },
+  },
 };
 
 export const OPERATOR_LABELS: Record<ConditionOperator, string> = {

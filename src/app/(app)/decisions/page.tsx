@@ -97,10 +97,10 @@ export default function DecisionsPage() {
 
     try {
       await decisionsRepo.remove(id);
-      toast.success('Decision deleted');
+      toast.success('Ruleset deleted');
     } catch (error) {
-      console.error('Failed to delete decision:', error);
-      toast.error('Failed to delete decision');
+      console.error('Failed to delete ruleset:', error);
+      toast.error('Failed to delete ruleset');
     }
   };
 
@@ -114,11 +114,11 @@ export default function DecisionsPage() {
         status: 'draft',
         createdBy: user?.id || 'unknown',
       });
-      toast.success('Decision duplicated');
+      toast.success('Ruleset duplicated');
       router.push(`/decisions/${newDecision.id}`);
     } catch (error) {
-      console.error('Failed to duplicate decision:', error);
-      toast.error('Failed to duplicate decision');
+      console.error('Failed to duplicate ruleset:', error);
+      toast.error('Failed to duplicate ruleset');
     }
   };
 

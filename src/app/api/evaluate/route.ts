@@ -69,7 +69,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<EvaluateRespo
       body.input,
       body.rules,
       body.decision_id,
-      body.decision_name
+      body.decision_name,
+      body.output_type || 'pass_fail'
     );
 
     return NextResponse.json({ success: true, result });

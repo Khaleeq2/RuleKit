@@ -29,11 +29,11 @@ export const tourSteps: Tour[] = [
       },
       {
         icon: <>🎯</>,
-        title: 'Pick a decision',
+        title: 'Pick a ruleset',
         content: (
           <p className="text-sm text-[var(--muted-foreground)]">
-            Each decision has its own set of rules. Select one from this dropdown
-            to evaluate against. We&apos;ve pre-loaded a <strong>Loan Eligibility</strong> sample to get you started.
+            Each ruleset has its own set of rules. Select one from this dropdown
+            to evaluate against.
           </p>
         ),
         selector: '#tour-decision-selector',
@@ -85,7 +85,7 @@ export const tourSteps: Tour[] = [
           </p>
         ),
         selector: '#tour-credits',
-        side: 'right',
+        side: 'top',
         showControls: true,
         showSkip: false,
         pointerPadding: 4,

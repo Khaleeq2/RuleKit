@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import type { CardComponentProps } from 'nextstepjs';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 // ============================================
 // Custom Tour Card
 // Matches RuleKit's design system (shadcn/ui + CSS vars)
+// Includes viewport-boundary safety to prevent clipping
 // ============================================
 
 export const TourCard: React.FC<CardComponentProps> = ({
@@ -22,9 +23,24 @@ export const TourCard: React.FC<CardComponentProps> = ({
 }) => {
   const isFirst = currentStep === 0;
   const isLast = currentStep === totalSteps - 1;
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Keep card within viewport bounds
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const frame = requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      const viewH = window.innerHeight;
+      if (rect.bottom > viewH - 12) {
+        el.style.transform = `translateY(-${Math.ceil(rect.bottom - viewH + 16)}px)`;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentStep]);
 
   return (
-    <Card className="w-[340px] border-[var(--border)] shadow-xl bg-[var(--card)] overflow-hidden">
+    <Card ref={cardRef} className="w-[340px] border-[var(--border)] shadow-xl bg-[var(--card)] overflow-hidden">
       {/* Progress bar */}
       <div className="h-1 bg-[var(--muted)]">
         <div

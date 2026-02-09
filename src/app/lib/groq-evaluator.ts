@@ -53,26 +53,58 @@ const MAX_COMPLETION_TOKENS = 16384;
 // System Prompt
 // ============================================
 
-const SYSTEM_PROMPT = `You are a precise rules evaluation engine. You evaluate user-submitted input against a set of rules and return a structured JSON result.
+const VERDICT_INSTRUCTIONS: Record<string, string> = {
+  pass_fail: `## Verdict Scheme: Pass / Fail
+For each rule, the verdict MUST be exactly "pass" or "fail".
+- The overall "verdict" is "pass" ONLY if ALL rules pass. If any rule fails, the overall verdict is "fail".
+- "suggestion" should be null for PASS verdicts. For FAIL verdicts, provide a specific, actionable instruction.`,
+
+  pass_flag_fail: `## Verdict Scheme: Pass / Flag / Fail
+For each rule, the verdict MUST be exactly "pass", "flag", or "fail".
+- "pass" = clearly meets the rule
+- "flag" = borderline or needs human review (ambiguous, partially met, or low confidence)
+- "fail" = clearly does not meet the rule
+- The overall "verdict": "pass" if ALL rules pass, "flag" if any rule is flagged but none fail, "fail" if any rule fails.
+- "suggestion" should be null for PASS verdicts. For FLAG/FAIL verdicts, provide a specific, actionable instruction.`,
+
+  risk_level: `## Verdict Scheme: Risk Level
+For each rule, the verdict MUST be exactly "low", "medium", "high", or "critical".
+- "low" = minimal risk, well within acceptable bounds
+- "medium" = moderate risk, warrants monitoring
+- "high" = significant risk, requires attention
+- "critical" = severe risk, immediate action needed
+- The overall "verdict" is the HIGHEST risk level found across all rules (critical > high > medium > low).
+- "suggestion" should be null for LOW verdicts. For MEDIUM/HIGH/CRITICAL verdicts, provide a specific, actionable instruction.`,
+};
+
+function buildSystemPrompt(outputType: string): string {
+  const verdictBlock = VERDICT_INSTRUCTIONS[outputType] || VERDICT_INSTRUCTIONS.pass_fail;
+  const verdictValues = outputType === 'risk_level'
+    ? '"low" | "medium" | "high" | "critical"'
+    : outputType === 'pass_flag_fail'
+      ? '"pass" | "flag" | "fail"'
+      : '"pass" | "fail"';
+
+  return `You are a precise rules evaluation engine. You evaluate user-submitted input against a set of rules and return a structured JSON result.
 
 ## Your Task
-For each rule provided, determine whether the input PASSES or FAILS the rule. Your evaluation must be:
+For each rule provided, evaluate the input and assign a verdict. Your evaluation must be:
 - **Deterministic**: Same input + rules = same result, every time.
-- **Evidence-based**: Every PASS must cite exact text from the input. Every FAIL must explain what was looked for and not found.
-- **Honest**: If the input is ambiguous or insufficient, FAIL the rule and explain why.
+- **Evidence-based**: Every positive verdict must cite exact text from the input. Every negative verdict must explain what was looked for and not found.
+- **Honest**: If the input is ambiguous or insufficient, assign an appropriate negative verdict and explain why.
 
 ## Output Format
 Return a single JSON object with this exact structure:
 {
-  "verdict": "pass" | "fail",
+  "verdict": ${verdictValues},
   "reason": "One-sentence summary of the overall result",
   "evaluations": [
     {
       "rule_id": "string (from the rule definition)",
       "rule_name": "string (from the rule definition)",
-      "verdict": "pass" | "fail",
+      "verdict": ${verdictValues},
       "confidence": 0.0 to 1.0,
-      "reason": "Why this rule passed or failed",
+      "reason": "Why this rule received this verdict",
       "evidence_spans": [
         {
           "text": "exact quoted text from the input that supports the verdict",
@@ -84,19 +116,20 @@ Return a single JSON object with this exact structure:
         "scanned_sections": ["list of areas/fields checked"],
         "statement": "What was expected but not found"
       },
-      "suggestion": "For FAIL verdicts: a specific, actionable sentence telling the user what data to provide to pass this rule. For PASS verdicts: null."
+      "suggestion": "For negative verdicts: a specific, actionable sentence telling the user what data to provide. For positive verdicts: null."
     }
   ]
 }
 
-## Rules
-- The overall "verdict" is "pass" ONLY if ALL rules pass. If any rule fails, the overall verdict is "fail".
-- "evidence_spans" should contain direct quotes from the input for PASS verdicts. For FAIL verdicts, set evidence_spans to an empty array.
-- "absence_proof" should be null for PASS verdicts. For FAIL verdicts, provide what you searched for and didn't find.
-- "suggestion" should be null for PASS verdicts. For FAIL verdicts, provide a specific, actionable instruction telling the user exactly what data or field to include to pass the rule (e.g., "Include a numeric credit_score field above 700" or "Provide employment_status as 'full-time', 'part-time', or 'self-employed'").
+${verdictBlock}
+
+## Additional Rules
+- "evidence_spans" should contain direct quotes from the input for positive verdicts. For negative verdicts, set evidence_spans to an empty array.
+- "absence_proof" should be null for positive verdicts. For negative verdicts, provide what you searched for and didn't find.
 - "confidence" should reflect how certain you are: 1.0 = definitive, 0.5 = borderline, below 0.5 = uncertain.
 - Return one evaluation per rule, in the same order as the rules are provided.
 - Output ONLY the JSON object. No markdown, no explanation outside the JSON.`;
+}
 
 // ============================================
 // Prompt Builder
@@ -144,10 +177,14 @@ function ensureArray(val: unknown, field: string): unknown[] {
   return val;
 }
 
+const VALID_VERDICTS = new Set(['pass', 'fail', 'flag', 'low', 'medium', 'high', 'critical']);
+
 function normalizeVerdict(raw: string): RuleVerdict {
   const v = raw.toLowerCase().trim();
-  if (v === 'pass' || v === 'passed') return 'pass';
-  if (v === 'fail' || v === 'failed') return 'fail';
+  if (v === 'passed') return 'pass';
+  if (v === 'failed') return 'fail';
+  if (v === 'flagged' || v === 'warning' || v === 'warn') return 'flag';
+  if (VALID_VERDICTS.has(v)) return v as RuleVerdict;
   throw new GroqValidationError(`Invalid verdict: "${raw}"`);
 }
 
@@ -261,14 +298,15 @@ export async function evaluateRules(
   input: string,
   rules: EvaluatorRule[],
   decisionId: string,
-  decisionName: string
+  decisionName: string,
+  outputType: string = 'pass_fail'
 ): Promise<EvaluationResult> {
   const startTime = Date.now();
 
   const userPrompt = buildUserPrompt(input, rules);
 
   const messages: GroqMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: buildSystemPrompt(outputType) },
     { role: 'user', content: userPrompt },
   ];
 
@@ -328,11 +366,22 @@ export async function evaluateRules(
   const raw = validateRawResponse(parsed);
   const evaluations = transformEvaluations(raw, input);
 
-  const overallVerdict: RuleVerdict = evaluations.every(
-    (e) => e.verdict === 'pass'
-  )
-    ? 'pass'
-    : 'fail';
+  // Compute overall verdict based on output type
+  let overallVerdict: RuleVerdict;
+  if (outputType === 'risk_level') {
+    const riskOrder: RuleVerdict[] = ['low', 'medium', 'high', 'critical'];
+    const maxIdx = evaluations.reduce((max, e) => {
+      const idx = riskOrder.indexOf(e.verdict);
+      return idx > max ? idx : max;
+    }, 0);
+    overallVerdict = riskOrder[maxIdx];
+  } else if (outputType === 'pass_flag_fail') {
+    if (evaluations.some((e) => e.verdict === 'fail')) overallVerdict = 'fail';
+    else if (evaluations.some((e) => e.verdict === 'flag')) overallVerdict = 'flag';
+    else overallVerdict = 'pass';
+  } else {
+    overallVerdict = evaluations.every((e) => e.verdict === 'pass') ? 'pass' : 'fail';
+  }
 
   const modelMeta: ModelMeta = {
     model: response.model || GROQ_MODEL,

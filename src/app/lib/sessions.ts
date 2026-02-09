@@ -22,7 +22,7 @@ export interface Session {
   title: string;
   decisionId: string;
   decisionName: string;
-  verdict: 'pass' | 'fail' | null;
+  verdict: string | null;
   messageCount: number;
   messages: SessionMessage[];
   createdAt: string;
@@ -59,7 +59,7 @@ function deriveTitle(messages: SessionMessage[]): string {
   return text.slice(0, 57) + '...';
 }
 
-function deriveVerdict(messages: SessionMessage[]): 'pass' | 'fail' | null {
+function deriveVerdict(messages: SessionMessage[]): string | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].evaluation) {
       return messages[i].evaluation!.verdict;

@@ -9,7 +9,7 @@ import {
   TrendingDown,
   Equal,
 } from 'lucide-react';
-import type { EvaluationResult } from '@/app/lib/evaluation-types';
+import type { EvaluationResult, RuleVerdict } from '@/app/lib/evaluation-types';
 
 // ============================================
 // ComparisonCard — Diff between two evaluations
@@ -25,8 +25,8 @@ type RuleDelta = 'improved' | 'regressed' | 'unchanged';
 interface RuleComparison {
   ruleId: string;
   ruleName: string;
-  previousVerdict: 'pass' | 'fail';
-  currentVerdict: 'pass' | 'fail';
+  previousVerdict: RuleVerdict;
+  currentVerdict: RuleVerdict;
   delta: RuleDelta;
   previousConfidence: number;
   currentConfidence: number;
@@ -45,9 +45,11 @@ function computeComparisons(
     const previousVerdict = prev?.verdict ?? 'fail';
     const currentVerdict = curr.verdict;
 
+    const positive = new Set(['pass', 'low']);
+    const negative = new Set(['fail', 'critical', 'high']);
     let delta: RuleDelta = 'unchanged';
-    if (previousVerdict === 'fail' && currentVerdict === 'pass') delta = 'improved';
-    if (previousVerdict === 'pass' && currentVerdict === 'fail') delta = 'regressed';
+    if (negative.has(previousVerdict) && positive.has(currentVerdict)) delta = 'improved';
+    if (positive.has(previousVerdict) && negative.has(currentVerdict)) delta = 'regressed';
 
     return {
       ruleId: curr.rule_id,
@@ -84,14 +86,21 @@ function DeltaIcon({ delta }: { delta: RuleDelta }) {
   }
 }
 
-function VerdictBadge({ verdict }: { verdict: 'pass' | 'fail' }) {
-  return verdict === 'pass' ? (
-    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-      Pass
-    </span>
-  ) : (
-    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-      Fail
+const VERDICT_BADGE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  pass: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', label: 'Pass' },
+  fail: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', label: 'Fail' },
+  flag: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', label: 'Flag' },
+  low: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', label: 'Low' },
+  medium: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', label: 'Medium' },
+  high: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400', label: 'High' },
+  critical: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', label: 'Critical' },
+};
+
+function VerdictBadge({ verdict }: { verdict: RuleVerdict }) {
+  const style = VERDICT_BADGE_STYLES[verdict] || VERDICT_BADGE_STYLES.fail;
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${style.bg} ${style.text}`}>
+      {style.label}
     </span>
   );
 }

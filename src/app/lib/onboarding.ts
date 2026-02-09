@@ -83,18 +83,18 @@ export interface ChecklistItem {
 export function getChecklistItems(state: OnboardingState): ChecklistItem[] {
   return [
     {
+      id: 'create-decision',
+      label: 'Create your first ruleset',
+      description: 'Define rules for your use case',
+      completed: state.firstDecisionCreated,
+      href: '/decisions/new',
+    },
+    {
       id: 'first-eval',
       label: 'Run your first evaluation',
       description: 'Type a scenario and see your rules in action',
       completed: state.firstEvalDone,
       href: '/home',
-    },
-    {
-      id: 'create-decision',
-      label: 'Create your own decision',
-      description: 'Define rules for your use case',
-      completed: state.firstDecisionCreated,
-      href: '/decisions/new',
     },
     {
       id: 'run-test',
@@ -105,7 +105,7 @@ export function getChecklistItems(state: OnboardingState): ChecklistItem[] {
     },
     {
       id: 'deploy',
-      label: 'Deploy a decision',
+      label: 'Deploy your ruleset',
       description: 'Make your rules available via API',
       completed: state.firstDeploy,
       href: '/decisions',

@@ -118,13 +118,13 @@ export default function DecisionStudioLayout({
       <div className="min-h-full flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-lg font-semibold text-[var(--foreground)] mb-2">
-            Decision not found
+            Ruleset not found
           </h2>
           <p className="text-[var(--muted-foreground)] mb-4">
-            The decision you're looking for doesn't exist or has been deleted.
+            The ruleset you&apos;re looking for doesn&apos;t exist or has been deleted.
           </p>
           <Button asChild>
-            <Link href="/decisions">Back to decisions</Link>
+            <Link href="/decisions">Back to rules</Link>
           </Button>
         </div>
       </div>

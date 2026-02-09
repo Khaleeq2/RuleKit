@@ -18,8 +18,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
-import { decisionsRepo } from '@/app/lib/decisions';
-import { DecisionTemplate, TemplateCategory } from '@/app/lib/types';
+import { decisionsRepo, schemasRepo } from '@/app/lib/decisions';
+import { DecisionTemplate, TemplateCategory, OutputType, OUTPUT_TYPE_META } from '@/app/lib/types';
 import { toast } from 'sonner';
 
 // ============================================
@@ -121,11 +121,11 @@ export default function NewDecisionPage() {
   const showTemplates = searchParams.get('templates') === 'true';
   const initialName = searchParams.get('name') || '';
 
-  const [step, setStep] = useState<'choose' | 'details'>(showTemplates ? 'choose' : 'details');
+  const [step, setStep] = useState<'choose' | 'details'>('choose');
   const [selectedTemplate, setSelectedTemplate] = useState<DecisionTemplate | null>(null);
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState('');
-  const [outputType, setOutputType] = useState<'pass_fail' | 'custom'>('pass_fail');
+  const [outputType, setOutputType] = useState<OutputType>('pass_fail');
   const [isCreating, setIsCreating] = useState(false);
 
   const handleSelectTemplate = (template: DecisionTemplate) => {
@@ -142,7 +142,7 @@ export default function NewDecisionPage() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      toast.error('Please enter a decision name');
+      toast.error('Please enter a ruleset name');
       return;
     }
 
@@ -153,17 +153,24 @@ export default function NewDecisionPage() {
         name: name.trim(),
         description: description.trim(),
         status: 'draft',
-        createdBy: 'user-1',
+        createdBy: '',
       });
 
-      // If using a template, we would also create schema, rules, and tests here
-      // For now, just redirect to the decision studio
+      // Update schema output type if not default
+      if (outputType !== 'pass_fail') {
+        try {
+          await schemasRepo.update(decision.id, { outputType });
+        } catch (e) {
+          console.error('Failed to update output type:', e);
+        }
+      }
 
-      toast.success('Decision created');
+      toast.success('Ruleset created');
       router.push(`/decisions/${decision.id}`);
     } catch (error) {
-      console.error('Failed to create decision:', error);
-      toast.error('Failed to create decision');
+      console.error('Failed to create ruleset:', error);
+      const msg = error instanceof Error ? error.message : 'Failed to create ruleset';
+      toast.error(msg);
     } finally {
       setIsCreating(false);
     }
@@ -174,19 +181,33 @@ export default function NewDecisionPage() {
       <div className="max-w-[900px] mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/decisions">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (step === 'details') {
+                setStep('choose');
+                setSelectedTemplate(null);
+                setName('');
+                setDescription('');
+                setOutputType('pass_fail');
+              } else {
+                router.push('/decisions');
+              }
+            }}
+          >
+            <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
             <h1 className="text-[22px] font-semibold text-[var(--foreground)] tracking-[-0.01em] leading-tight">
-              {step === 'choose' ? 'Choose a starting point' : 'Create new decision'}
+              {step === 'choose' ? 'Create a ruleset' : 'Ruleset details'}
             </h1>
             <p className="text-[13px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
               {step === 'choose'
                 ? 'Start from a template or create from scratch'
-                : 'Define your decision and its output type'}
+                : selectedTemplate
+                  ? `Based on ${selectedTemplate.name} template`
+                  : 'Define your ruleset and its output type'}
             </p>
           </div>
         </div>
@@ -206,7 +227,7 @@ export default function NewDecisionPage() {
                   <div className="flex-1">
                     <h3 className="font-semibold text-[var(--foreground)]">Start from scratch</h3>
                     <p className="text-sm text-[var(--muted-foreground)]">
-                      Create a blank decision and define everything yourself
+                      Create a blank ruleset and define everything yourself
                     </p>
                   </div>
                   <ArrowRight className="w-5 h-5 text-[var(--muted-foreground)]" />
@@ -251,40 +272,17 @@ export default function NewDecisionPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Back to templates */}
-            {showTemplates && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setStep('choose')}
-                className="text-[var(--muted-foreground)]"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to templates
-              </Button>
-            )}
-
-            {/* Selected template indicator */}
-            {selectedTemplate && (
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--brand)]/5 border border-[var(--brand)]/15">
-                <Sparkles className="w-5 h-5 text-[var(--brand)]" />
-                <span className="text-sm text-[var(--foreground)]">
-                  Starting from <strong>{selectedTemplate.name}</strong> template
-                </span>
-              </div>
-            )}
-
             {/* Form */}
             <Card className="surface-grain">
               <CardHeader>
-                <CardTitle>Decision details</CardTitle>
+                <CardTitle>Ruleset details</CardTitle>
                 <CardDescription>
-                  Give your decision a clear name and description
+                  Give your ruleset a clear name and description
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Decision name</Label>
+                  <Label htmlFor="name">Ruleset name</Label>
                   <Input
                     id="name"
                     value={name}
@@ -300,25 +298,49 @@ export default function NewDecisionPage() {
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="What does this decision do?"
+                    placeholder="What does this ruleset do?"
                     rows={3}
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>Output type</Label>
-                  <div className="flex items-center gap-3 p-4 rounded-lg border border-[var(--brand)]/20 bg-[var(--brand)]/5">
-                    <CheckCircle className="w-5 h-5 text-[var(--brand)] flex-shrink-0" />
-                    <div className="flex-1">
-                      <span className="font-medium text-[var(--foreground)]">Pass / Fail</span>
-                      <p className="text-sm text-[var(--muted-foreground)] font-normal mt-0.5">
-                        Returns a binary decision with a reason message
-                      </p>
-                    </div>
+                  <div className="space-y-2">
+                    {(Object.keys(OUTPUT_TYPE_META) as OutputType[]).map((key) => {
+                      const meta = OUTPUT_TYPE_META[key];
+                      const isSelected = outputType === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setOutputType(key)}
+                          className={`w-full flex items-center gap-3 p-4 rounded-lg border text-left transition-all ${
+                            isSelected
+                              ? 'border-[var(--brand)]/30 bg-[var(--brand)]/5 shadow-sm'
+                              : 'border-[var(--border)] hover:border-[var(--brand)]/20 hover:bg-[var(--muted)]/30'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                            isSelected ? 'border-[var(--brand)] bg-[var(--brand)]' : 'border-[var(--border)]'
+                          }`}>
+                            {isSelected && (
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className={`font-medium ${isSelected ? 'text-[var(--foreground)]' : 'text-[var(--foreground)]/80'}`}>
+                              {meta.label}
+                            </span>
+                            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">
+                              {meta.description}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    Custom output types coming soon.
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -329,7 +351,7 @@ export default function NewDecisionPage() {
                 <Link href="/decisions">Cancel</Link>
               </Button>
               <Button onClick={handleCreate} disabled={isCreating || !name.trim()} className="h-10 text-[14px] bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white">
-                {isCreating ? 'Creating...' : 'Create decision'}
+                {isCreating ? 'Creating...' : 'Create ruleset'}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>

@@ -16,7 +16,7 @@ export interface AbsenceProof {
   statement: string;
 }
 
-export type RuleVerdict = 'pass' | 'fail';
+export type RuleVerdict = 'pass' | 'fail' | 'flag' | 'low' | 'medium' | 'high' | 'critical';
 
 export interface RuleEvaluation {
   rule_id: string;
@@ -94,6 +94,7 @@ export interface EvaluateRequest {
   decision_id: string;
   decision_name: string;
   rules: EvaluatorRule[];
+  output_type?: 'pass_fail' | 'pass_flag_fail' | 'risk_level';
 }
 
 export interface EvaluateResponse {

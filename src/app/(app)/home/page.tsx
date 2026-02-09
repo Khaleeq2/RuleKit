@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RuleResultCard, EvaluationSkeleton } from '@/app/components/RuleResultCard';
 import { ComparisonCard } from '@/app/components/ComparisonCard';
 import MarkdownContent from '@/app/components/MarkdownContent';
-import { decisionsRepo, rulesRepo } from '@/app/lib/decisions';
+import { decisionsRepo, rulesRepo, schemasRepo } from '@/app/lib/decisions';
 import { DecisionWithStats } from '@/app/lib/types';
 import type { EvaluateResponse, EvaluationResult } from '@/app/lib/evaluation-types';
 import { sessionsRepo, type Session, type SessionMessage } from '@/app/lib/sessions';
@@ -31,7 +31,7 @@ import { formatRelativeTime } from '@/app/lib/time-utils';
 import { toast } from 'sonner';
 import { WelcomeModal } from '@/app/components/WelcomeModal';
 import { OnboardingChecklist } from '@/app/components/OnboardingChecklist';
-import { getOnboardingState, updateOnboardingState, seedDecisionIfNeeded, type OnboardingState } from '@/app/lib/onboarding';
+import { getOnboardingState, updateOnboardingState, type OnboardingState } from '@/app/lib/onboarding';
 import { celebrationBurst } from '@/app/lib/confetti';
 import { useNextStep } from 'nextstepjs';
 
@@ -47,7 +47,7 @@ interface ExecutionResult {
   id: string;
   decisionName: string;
   input: string;
-  verdict: 'pass' | 'fail';
+  verdict: string;
   reason: string;
   rules: RuleCheck[];
   latencyMs: number;
@@ -136,7 +136,7 @@ export default function HomePage() {
           rules: ev.evaluations.map((e: { rule_id: string; rule_name: string; verdict: string; reason: string }) => ({
             id: e.rule_id,
             name: e.rule_name,
-            status: e.verdict === 'pass' ? 'passed' as const : 'failed' as const,
+            status: (e.verdict === 'pass' || e.verdict === 'low') ? 'passed' as const : 'failed' as const,
             message: e.reason,
           })),
           latencyMs: ev.latency_ms,
@@ -166,23 +166,10 @@ export default function HomePage() {
         const obState = await getOnboardingState();
         setOnboarding(obState);
 
-        let [decisionsData, sessionsData] = await Promise.all([
+        const [decisionsData, sessionsData] = await Promise.all([
           decisionsRepo.listWithStats(),
           sessionsRepo.list(),
         ]);
-
-        // If user has 0 decisions, seed the sample Loan Eligibility decision
-        if (decisionsData.length === 0) {
-          const seedResult = await seedDecisionIfNeeded();
-          if (seedResult.seeded && seedResult.decisionId) {
-            // Re-fetch decisions after seeding
-            decisionsData = await decisionsRepo.listWithStats();
-            // Update onboarding state with seed decision ID
-            await updateOnboardingState({ seedDecisionId: seedResult.decisionId });
-            obState.seedDecisionId = seedResult.decisionId;
-            setOnboarding({ ...obState });
-          }
-        }
 
         setDecisions(decisionsData);
         setRecentSessions(sessionsData.slice(0, 3));
@@ -304,8 +291,11 @@ export default function HomePage() {
     const decision = decisions.find(d => d.id === decisionId);
     const decisionName = decision?.name || 'Unknown Decision';
 
-    // Fetch real rules for this decision
-    const decisionRules = await rulesRepo.listByDecisionId(decisionId);
+    // Fetch real rules and schema for this decision
+    const [decisionRules, schema] = await Promise.all([
+      rulesRepo.listByDecisionId(decisionId),
+      schemasRepo.getByDecisionId(decisionId),
+    ]);
     const enabledRules = decisionRules.filter((r: { enabled: boolean }) => r.enabled);
 
     if (enabledRules.length === 0) {
@@ -331,6 +321,7 @@ export default function HomePage() {
         decision_id: decisionId,
         decision_name: decisionName,
         rules: evaluatorRules,
+        output_type: schema?.outputType || 'pass_fail',
       }),
     });
 
@@ -346,7 +337,7 @@ export default function HomePage() {
     const ruleChecks: RuleCheck[] = result.evaluations.map(e => ({
       id: e.rule_id,
       name: e.rule_name,
-      status: e.verdict === 'pass' ? 'passed' as const : 'failed' as const,
+      status: (e.verdict === 'pass' || e.verdict === 'low') ? 'passed' as const : 'failed' as const,
       message: e.reason,
     }));
 
@@ -628,15 +619,24 @@ export default function HomePage() {
     setTimeout(() => textareaRef.current?.focus(), 200);
   };
 
-  const handleStartEvaluating = async () => {
-    await handleWelcomeDismiss();
+  const handleStartFromTemplate = async () => {
+    setShowWelcome(false);
+    await updateOnboardingState({ welcomed: true });
+    if (onboarding) setOnboarding({ ...onboarding, welcomed: true });
+    window.location.href = '/decisions/new?templates=true';
+  };
+
+  const handleCreateFromScratch = async () => {
+    setShowWelcome(false);
+    await updateOnboardingState({ welcomed: true });
+    if (onboarding) setOnboarding({ ...onboarding, welcomed: true });
+    window.location.href = '/decisions/new';
   };
 
   const handleTakeTour = async () => {
     setShowWelcome(false);
     await updateOnboardingState({ welcomed: true, tourCompleted: false });
     if (onboarding) setOnboarding({ ...onboarding, welcomed: true });
-    // Start the NextStepJS product tour after modal dismisses
     setTimeout(() => {
       startNextStep('welcome-tour');
     }, 400);
@@ -650,7 +650,8 @@ export default function HomePage() {
       {/* Welcome Modal */}
       {showWelcome && (
         <WelcomeModal
-          onStartEvaluating={handleStartEvaluating}
+          onStartFromTemplate={handleStartFromTemplate}
+          onCreateFromScratch={handleCreateFromScratch}
           onTakeTour={handleTakeTour}
           onDismiss={handleWelcomeDismiss}
         />

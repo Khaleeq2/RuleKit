@@ -24,6 +24,14 @@ function sb() {
   return getSupabaseBrowserClient();
 }
 
+async function requireAuth(): Promise<string> {
+  const { data: { user }, error } = await sb().auth.getUser();
+  if (error || !user) {
+    throw new Error('Not authenticated — please sign in again.');
+  }
+  return user.id;
+}
+
 const CHANGE_EVENT = 'rulekit:data-changed';
 function notify(key: string) {
   if (typeof window !== 'undefined') {
@@ -134,6 +142,8 @@ export const decisionsRepo = {
   },
 
   async create(input: Omit<Decision, 'id' | 'createdAt' | 'updatedAt' | 'activeVersionId'>): Promise<Decision> {
+    await requireAuth();
+
     const { data, error } = await sb()
       .from('decisions')
       .insert({
@@ -149,11 +159,16 @@ export const decisionsRepo = {
     notify('decisions');
 
     // Create default schema
-    await schemasRepo.create({
-      decisionId: decision.id,
-      fields: [],
-      outputType: 'pass_fail',
-    });
+    try {
+      await schemasRepo.create({
+        decisionId: decision.id,
+        fields: [],
+        outputType: 'pass_fail',
+      });
+    } catch (schemaError) {
+      console.error('Decision created but schema creation failed:', schemaError);
+      // Decision exists, schema will be created on first access
+    }
 
     return decision;
   },
