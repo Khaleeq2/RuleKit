@@ -112,7 +112,7 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-[var(--card)] rounded-2xl shadow-[var(--shadow-card)] border border-[var(--border)] p-8">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4" aria-busy={loading}>
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-sm font-medium text-[var(--foreground)]">
                 Email
@@ -154,6 +154,7 @@ export default function LoginPage() {
             <Button 
               type="submit" 
               disabled={loading}
+              aria-label={loading ? 'Signing in' : 'Sign in'}
               className="w-full h-11 text-sm font-medium gradient-primary text-white rounded-xl shadow-md shadow-[var(--primary)]/20 hover:shadow-lg hover:shadow-[var(--primary)]/30 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {loading ? (
@@ -185,6 +186,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogleLogin}
             disabled={googleLoading}
+            aria-label={googleLoading ? 'Signing in with Google' : 'Continue with Google'}
             className="w-full h-11 flex items-center justify-center gap-3 text-sm font-medium text-[var(--foreground)] bg-[var(--background)] border border-[var(--border)] rounded-xl hover:bg-[var(--muted)] hover:border-[var(--muted-foreground)]/30 transition-all duration-200 disabled:opacity-50"
           >
             {googleLoading ? (

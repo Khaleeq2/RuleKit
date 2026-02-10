@@ -142,6 +142,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           {/* Sidebar — expandable icon rail */}
           <aside
+            aria-label="Main navigation"
             onClick={(e) => {
               if (e.target === e.currentTarget) setSidebarExpanded(!sidebarExpanded);
             }}
@@ -156,6 +157,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
+                  aria-label={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
                   onClick={() => setSidebarExpanded(!sidebarExpanded)}
                   className={`
                     absolute -right-3 top-1/2 -translate-y-1/2 z-50
@@ -181,6 +183,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
             {/* Navigation */}
             <nav
+              aria-label="App navigation"
               className="flex-1 py-3"
               onClick={(e) => {
                 if (e.target === e.currentTarget) setSidebarExpanded(!sidebarExpanded);
@@ -197,6 +200,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                     <Link
                       id={tourId}
                       href={item.href}
+                      aria-label={item.label}
+                      aria-current={isActive ? 'page' : undefined}
                       className={`
                         flex items-center gap-3 py-2.5 rounded-lg
                         transition-all duration-150
@@ -235,6 +240,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               <Link
                 id="tour-credits"
                 href="/billing"
+                aria-label={credits ? `${credits.balance} credits remaining` : 'View credits'}
                 className={`flex items-center gap-2 py-2 rounded-lg hover:bg-[var(--muted)]/70 transition-colors ${sidebarExpanded ? 'px-3' : 'justify-center'}`}
               >
                 <Coins className="w-4 h-4 text-amber-500 flex-shrink-0" />
@@ -250,7 +256,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className="px-2.5 pt-1 pb-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className={`flex items-center w-full p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors ${sidebarExpanded ? 'gap-2.5' : 'justify-center'}`}>
+                  <button aria-label="Account menu" className={`flex items-center w-full p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors ${sidebarExpanded ? 'gap-2.5' : 'justify-center'}`}>
                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]/70 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
                       {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
                     </div>
@@ -298,7 +304,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </aside>
 
           {/* Main Content Area */}
-          <main className="flex-1 min-w-0 overflow-auto">
+          <main role="main" className="flex-1 min-w-0 overflow-auto">
             <PageTransition>
               {children}
             </PageTransition>

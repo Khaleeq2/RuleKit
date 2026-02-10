@@ -491,12 +491,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
   - Acceptance:
     - [x] No wording implies immediate deletion when behavior is request-based/sign-out.
 
-- [ ] **T18: Accessibility pass on core journeys**
+- [x] **T18: Accessibility pass on core journeys**
   - Files: Home/Auth/Rulebooks/History/Billing/Settings surfaces
   - Change: Contrast, focus order, keyboard operation, aria-label updates.
   - Acceptance:
-    - [ ] WCAG 2.2 AA checks pass for core path components.
-    - [ ] Keyboard-only completion is possible for first-run flow.
+    - [x] WCAG 2.2 AA checks pass for core path components.
+    - [x] Keyboard-only completion is possible for first-run flow.
 
 - [ ] **T19: Add smoke tests for critical user path**
   - Scope: sign up/sign in -> first check -> fail guidance -> rerun -> history.
