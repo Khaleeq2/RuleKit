@@ -1026,12 +1026,12 @@ function SuperInput({
       'application/json', 'text/plain', 'text/csv', 'text/xml',
       'application/xml', 'text/html', 'text/markdown',
     ];
-    const textExtensions = ['.json', '.txt', '.csv', '.xml', '.md', '.yaml', '.yml', '.tsv', '.log'];
+    const textExtensions = ['.json', '.txt', '.csv', '.xml', '.md', '.yaml', '.yml', '.tsv', '.log', '.html'];
     const isText = textTypes.includes(file.type) || textExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
 
     if (!isText) {
       toast.error(`${file.name} is not a supported text format`, {
-        description: 'Try JSON, CSV, TXT, XML, YAML, or Markdown files.',
+        description: 'Supported: JSON, CSV, TXT, XML, YAML, Markdown, TSV, LOG, or HTML.',
       });
       return;
     }
@@ -1113,7 +1113,7 @@ function SuperInput({
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-[var(--foreground)]">Drop your file here</p>
-              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">Instantly check against your rules</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">JSON, CSV, TXT, XML, YAML, Markdown, and more</p>
             </div>
           </motion.div>
         )}
@@ -1144,7 +1144,7 @@ function SuperInput({
       {!value.trim() && !isFocused && !isDragging && (
         <div className="flex items-center gap-1.5 px-5 pb-2">
           <FileText className="w-3 h-3 text-[var(--muted-foreground)]/40" />
-          {['JSON', 'CSV', 'TXT', 'XML', 'YAML'].map(fmt => (
+          {['JSON', 'CSV', 'TXT', 'XML', 'YAML', 'MD'].map(fmt => (
             <span key={fmt} className="text-[10px] font-medium text-[var(--muted-foreground)]/40 px-1.5 py-0.5 rounded border border-[var(--border)]/40">
               {fmt}
             </span>
@@ -1192,7 +1192,7 @@ function SuperInput({
           />
           <button
             type="button"
-            title="Attach file (JSON, CSV, TXT, XML, YAML)"
+            title="Attach file (JSON, CSV, TXT, XML, YAML, Markdown)"
             onClick={() => fileInputRef.current?.click()}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors"
           >

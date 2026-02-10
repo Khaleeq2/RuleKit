@@ -378,12 +378,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] Landing claims match actual uploader support.
     - [x] No "any file type" copy remains unless implementation supports it.
 
-- [ ] **T2: Align uploader UX with real support**
+- [x] **T2: Align uploader UX with real support**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`
   - Change: Make supported formats explicit everywhere in composer/upload affordances.
   - Acceptance:
-    - [ ] Drag/drop and paperclip hints list same formats.
-    - [ ] Error message and hint text are consistent.
+    - [x] Drag/drop and paperclip hints list same formats.
+    - [x] Error message and hint text are consistent.
 
 - [ ] **T3: Make input mode explicit**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`
