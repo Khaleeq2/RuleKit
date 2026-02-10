@@ -83,32 +83,25 @@ export interface ChecklistItem {
 export function getChecklistItems(state: OnboardingState): ChecklistItem[] {
   return [
     {
-      id: 'create-rulebook',
-      label: 'Create your first rulebook',
-      description: 'Define rules for your use case',
-      completed: state.firstRulebookCreated,
-      href: '/rulebooks/new',
-    },
-    {
       id: 'first-eval',
-      label: 'Run your first evaluation',
-      description: 'Type a scenario and see your rules in action',
+      label: 'Run your first check',
+      description: 'Paste content and see your rules in action',
       completed: state.firstEvalDone,
       href: '/home',
     },
     {
-      id: 'run-test',
-      label: 'Run a test suite',
-      description: 'Verify your rules with test cases',
-      completed: state.firstTestRun,
-      href: '/rulebooks',
+      id: 'create-rulebook',
+      label: 'Create your own rulebook',
+      description: 'Write rules in your own words',
+      completed: state.firstRulebookCreated,
+      href: '/rulebooks/new',
     },
     {
-      id: 'deploy',
-      label: 'Deploy your rulebook',
-      description: 'Make your rules available via API',
-      completed: state.firstDeploy,
-      href: '/rulebooks',
+      id: 'take-tour',
+      label: 'Take the product tour',
+      description: 'See what RuleKit can do in 60 seconds',
+      completed: state.tourCompleted,
+      href: '/home',
     },
   ];
 }
@@ -117,11 +110,10 @@ export function getCompletedCount(state: OnboardingState): number {
   return [
     state.firstEvalDone,
     state.firstRulebookCreated,
-    state.firstTestRun,
-    state.firstDeploy,
+    state.tourCompleted,
   ].filter(Boolean).length;
 }
 
 export function isOnboardingComplete(state: OnboardingState): boolean {
-  return getCompletedCount(state) === 4;
+  return getCompletedCount(state) === 3;
 }

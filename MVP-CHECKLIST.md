@@ -103,7 +103,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
   - Sidebar defaults to icon-only; key actions hidden in "More."
   - Fix: labeled nav by default for new users + clearer primary studio tabs.
 
-- [ ] **C6: Onboarding asks for advanced actions too early**
+- [x] **C6: Onboarding asks for advanced actions too early**
   - Checklist includes test suite/deploy before first value is stable.
   - Fix: rewrite onboarding into simpler 3-step progression.
 
@@ -413,12 +413,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] New users see labeled navigation without hover dependency.
     - [x] Existing users can still collapse nav.
 
-- [ ] **T7: Simplify onboarding checklist**
+- [x] **T7: Simplify onboarding checklist**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/lib/onboarding.ts`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/components/OnboardingChecklist.tsx`
   - Change: Replace advanced tasks with beginner tasks focused on first value.
   - Acceptance:
-    - [ ] Checklist max 3-4 simple items.
-    - [ ] First two items are achievable without technical skills.
+    - [x] Checklist max 3-4 simple items.
+    - [x] First two items are achievable without technical skills.
 
 ## Sprint 2: Flow and IA Simplification
 
