@@ -5,18 +5,13 @@ import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
+  LayoutDashboard,
+  List,
   FileCode,
   TestTube,
   Code,
-  MoreHorizontal,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { rulebooksRepo } from '@/app/lib/rulebooks';
 import { Rulebook } from '@/app/lib/types';
 
@@ -109,35 +104,38 @@ export default function RulebookStudioLayout({
               </div>
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-[12px] font-medium">
-                  <MoreHorizontal className="w-3.5 h-3.5" />
-                  More
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href={`${basePath}/schema`}>
-                    <FileCode className="w-3.5 h-3.5 mr-2" />
-                    Schema
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href={`${basePath}/tests`}>
-                    <TestTube className="w-3.5 h-3.5 mr-2" />
-                    Tests
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href={`${basePath}/api`}>
-                    <Code className="w-3.5 h-3.5 mr-2" />
-                    API
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
+
+          {/* Tab navigation — horizontally scrollable on mobile */}
+          <nav className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mb-px" role="tablist">
+            {[
+              { label: 'Overview', href: basePath, icon: LayoutDashboard, match: pathname === basePath },
+              { label: 'Rules', href: `${basePath}/rules`, icon: List, match: pathname === `${basePath}/rules` },
+              { label: 'Schema', href: `${basePath}/schema`, icon: FileCode, match: pathname === `${basePath}/schema` },
+              { label: 'Tests', href: `${basePath}/tests`, icon: TestTube, match: pathname === `${basePath}/tests` },
+              { label: 'API', href: `${basePath}/api`, icon: Code, match: pathname === `${basePath}/api` },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <Link
+                  key={tab.label}
+                  href={tab.href}
+                  role="tab"
+                  aria-selected={tab.match}
+                  className={`
+                    flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium whitespace-nowrap border-b-2 transition-colors
+                    ${tab.match
+                      ? 'border-[var(--brand)] text-[var(--brand)]'
+                      : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--border)]'
+                    }
+                  `}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </header>
 

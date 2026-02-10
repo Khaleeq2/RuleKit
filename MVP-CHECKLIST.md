@@ -429,12 +429,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] User sees "what this rulebook does" and next actions first.
     - [x] Rules/schema/tests/api are clearly discoverable.
 
-- [ ] **T9: Promote key rulebook surfaces out of hidden menu**
+- [x] **T9: Promote key rulebook surfaces out of hidden menu**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/layout.tsx`
   - Change: Add visible tab navigation for Overview/Rules/Schema/Tests/API.
   - Acceptance:
-    - [ ] Core tabs are visible without opening dropdown.
-    - [ ] Mobile has an accessible alternate nav pattern.
+    - [x] Core tabs are visible without opening dropdown.
+    - [x] Mobile has an accessible alternate nav pattern.
 
 - [ ] **T10: Reduce advanced output-type complexity at creation**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/new/page.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/lib/types.ts`
