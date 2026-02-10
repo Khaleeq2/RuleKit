@@ -127,6 +127,7 @@ export default function NewRulebookPage() {
   const [description, setDescription] = useState('');
   const [outputType, setOutputType] = useState<OutputType>('pass_fail');
   const [isCreating, setIsCreating] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const handleSelectTemplate = (template: RulebookTemplate) => {
     setSelectedTemplate(template);
@@ -300,44 +301,71 @@ export default function NewRulebookPage() {
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <Label>Output type</Label>
-                  <div className="space-y-2">
-                    {(Object.keys(OUTPUT_TYPE_META) as OutputType[]).map((key) => {
-                      const meta = OUTPUT_TYPE_META[key];
-                      const isSelected = outputType === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setOutputType(key)}
-                          className={`w-full flex items-center gap-3 p-4 rounded-lg border text-left transition-all ${
-                            isSelected
-                              ? 'border-[var(--brand)]/30 bg-[var(--brand)]/5 shadow-sm'
-                              : 'border-[var(--border)] hover:border-[var(--brand)]/20 hover:bg-[var(--muted)]/30'
-                          }`}
-                        >
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            isSelected ? 'border-[var(--brand)] bg-[var(--brand)]' : 'border-[var(--border)]'
-                          }`}>
-                            {isSelected && (
-                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className={`font-medium ${isSelected ? 'text-[var(--foreground)]' : 'text-[var(--foreground)]/80'}`}>
-                              {meta.label}
-                            </span>
-                            <p className="text-sm text-[var(--muted-foreground)] mt-0.5">
-                              {meta.description}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                {/* Advanced settings — collapsed by default */}
+                <div className="border-t border-[var(--border)]/60 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="flex items-center gap-2 text-[13px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                  >
+                    <svg
+                      className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    Advanced settings
+                    {outputType !== 'pass_fail' && (
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-[var(--brand)]/10 text-[var(--brand)]">
+                        {OUTPUT_TYPE_META[outputType].label}
+                      </span>
+                    )}
+                  </button>
+
+                  {showAdvanced && (
+                    <div className="mt-4 space-y-3">
+                      <Label>Output type</Label>
+                      <p className="text-[13px] text-[var(--muted-foreground)] -mt-1">
+                        Most rulebooks use Pass / Fail. Change this only if you need more verdict levels.
+                      </p>
+                      <div className="space-y-2">
+                        {(Object.keys(OUTPUT_TYPE_META) as OutputType[]).map((key) => {
+                          const meta = OUTPUT_TYPE_META[key];
+                          const isSelected = outputType === key;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => setOutputType(key)}
+                              className={`w-full flex items-center gap-3 p-4 rounded-lg border text-left transition-all ${
+                                isSelected
+                                  ? 'border-[var(--brand)]/30 bg-[var(--brand)]/5 shadow-sm'
+                                  : 'border-[var(--border)] hover:border-[var(--brand)]/20 hover:bg-[var(--muted)]/30'
+                              }`}
+                            >
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                isSelected ? 'border-[var(--brand)] bg-[var(--brand)]' : 'border-[var(--border)]'
+                              }`}>
+                                {isSelected && (
+                                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className={`font-medium ${isSelected ? 'text-[var(--foreground)]' : 'text-[var(--foreground)]/80'}`}>
+                                  {meta.label}
+                                </span>
+                                <p className="text-sm text-[var(--muted-foreground)] mt-0.5">
+                                  {meta.description}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -436,12 +436,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] Core tabs are visible without opening dropdown.
     - [x] Mobile has an accessible alternate nav pattern.
 
-- [ ] **T10: Reduce advanced output-type complexity at creation**
+- [x] **T10: Reduce advanced output-type complexity at creation**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/new/page.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/lib/types.ts`
   - Change: Default to pass/fail; hide advanced output options behind "Advanced."
   - Acceptance:
-    - [ ] Default creation path uses one simple outcome model.
-    - [ ] Advanced modes still available but not blocking first-run.
+    - [x] Default creation path uses one simple outcome model.
+    - [x] Advanced modes still available but not blocking first-run.
 
 - [ ] **T11: Simplify schema editor for non-technical users**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/schema/page.tsx`
