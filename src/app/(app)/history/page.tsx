@@ -170,7 +170,7 @@ export default function HistoryPage() {
               History
             </h1>
             <p className="text-[13px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
-              All evaluation sessions and rule runs
+              Review past checks and their results
             </p>
           </div>
           <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
@@ -206,7 +206,7 @@ export default function HistoryPage() {
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5 inline-block mr-1.5 -mt-0.5" />
-            Sessions
+            Conversations
             {sessions.length > 0 && (
               <span className="ml-1.5 text-xs text-[var(--muted-foreground)]">{sessions.length}</span>
             )}
@@ -220,7 +220,7 @@ export default function HistoryPage() {
             }`}
           >
             <Clock className="w-3.5 h-3.5 inline-block mr-1.5 -mt-0.5" />
-            Runs
+            Individual checks
             {runs.length > 0 && (
               <span className="ml-1.5 text-xs text-[var(--muted-foreground)]">{runs.length}</span>
             )}
@@ -231,15 +231,15 @@ export default function HistoryPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5">
           {activeTab === 'sessions' ? (
             <>
-              <StatCard label="Total sessions" value={sessionStats.total} />
+              <StatCard label="Conversations" value={sessionStats.total} />
               <StatCard label="Passed" value={sessionStats.passed} icon={CheckCircle2} variant="success" />
               <StatCard label="Failed" value={sessionStats.failed} icon={XCircle} variant="error" />
               <StatCard label="Total messages" value={sessionStats.totalMessages} icon={MessageSquare} />
-              <StatCard label="Avg messages" value={sessionStats.avgMessages} icon={Clock} />
+              <StatCard label="Avg. length" value={sessionStats.avgMessages} icon={Clock} />
             </>
           ) : (
             <>
-              <StatCard label="Total runs" value={runStats.total} />
+              <StatCard label="Total checks" value={runStats.total} />
               <StatCard label="Passed" value={runStats.passed} icon={CheckCircle2} variant="success" />
               <StatCard label="Failed" value={runStats.failed} icon={XCircle} variant="error" />
               <StatCard label="Avg latency" value={`${runStats.avgLatency}ms`} icon={Clock} />
@@ -255,7 +255,7 @@ export default function HistoryPage() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by rule, reason, or ID..."
+              placeholder="Search by rulebook name or result..."
               className="pl-10 h-11 bg-[var(--card)] border-[var(--border)] shadow-[0_1px_2px_0_rgb(0_0_0/0.05)] focus:shadow-[0_4px_12px_-4px_rgb(0_0_0/0.1)] transition-all"
             />
           </div>
@@ -318,11 +318,11 @@ export default function HistoryPage() {
                 <MessageSquare className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-4" />
                 <p className="text-[var(--muted-foreground)]">
                   {sessions.length === 0
-                    ? 'No sessions yet. Start an evaluation from the Home page.'
-                    : 'No sessions match your filters'}
+                    ? 'No conversations yet. Try running a check from the Home page.'
+                    : 'No conversations match your filters'}
                 </p>
                 <Button variant="outline" className="mt-4" asChild>
-                  <Link href="/home">Start evaluating</Link>
+                  <Link href="/home">Run your first check</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -343,8 +343,8 @@ export default function HistoryPage() {
             <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
               <div className="hidden md:grid grid-cols-[24px_120px_1fr_92px_80px_90px_80px_24px] gap-4 items-center px-4 py-3 bg-[var(--muted)]/50 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">
                 <span></span>
-                <span>Time</span>
-                <span>Rule</span>
+                <span>When</span>
+                <span>Rulebook</span>
                 <span>Env</span>
                 <span>Result</span>
                 <span className="text-right">Latency</span>
@@ -360,20 +360,25 @@ export default function HistoryPage() {
           ) : filteredRuns.length === 0 ? (
             <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)]">
               <CardContent className="py-12 text-center">
-                <AlertTriangle className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-4" />
+                <Clock className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-4" />
                 <p className="text-[var(--muted-foreground)]">
                   {runs.length === 0
-                    ? 'No runs yet. Runs will appear here when you execute rules.'
-                    : 'No runs match your filters'}
+                    ? 'No checks yet. Results will appear here after you run a rulebook.'
+                    : 'No checks match your filters'}
                 </p>
+                {runs.length === 0 && (
+                  <Button variant="outline" className="mt-4" asChild>
+                    <Link href="/home">Run your first check</Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
             <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)] overflow-hidden">
               <div className="hidden md:grid grid-cols-[24px_120px_1fr_92px_80px_90px_80px_24px] gap-4 items-center px-4 py-3 bg-[var(--muted)]/50 text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">
                 <span></span>
-                <span>Time</span>
-                <span>Rule</span>
+                <span>When</span>
+                <span>Rulebook</span>
                 <span>Env</span>
                 <span>Result</span>
                 <span className="text-right">Latency</span>

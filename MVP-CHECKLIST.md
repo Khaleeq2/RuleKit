@@ -472,12 +472,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
 
 ## Sprint 3: Trust, Accessibility, and Reliability
 
-- [ ] **T15: History terminology and filter simplification**
+- [x] **T15: History terminology and filter simplification**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/history/page.tsx`
   - Change: Reduce jargon and improve scanability for average users.
   - Acceptance:
-    - [ ] Users can identify what each row represents without docs.
-    - [ ] Empty states point clearly to next action.
+    - [x] Users can identify what each row represents without docs.
+    - [x] Empty states point clearly to next action.
 
 - [ ] **T16: Billing explanation clarity pass**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/billing/page.tsx`
