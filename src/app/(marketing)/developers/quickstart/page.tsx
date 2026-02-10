@@ -5,33 +5,53 @@ import { buildPublicMetadata } from '../../_lib/public-metadata';
 export const metadata: Metadata = buildPublicMetadata({
   title: 'Developers — API Quickstart',
   description:
-    'Integrate RuleKit rulebooks into any stack. Send JSON, get a verdict. Full REST API with versioned endpoints.',
+    'Call RuleKit from your signed-in app using session-based auth. Send input + rules and get a structured verdict.',
   canonicalPath: '/developers/quickstart',
 });
 
-const CODE_EXAMPLE = `curl -X POST https://api.rulekit.io/v1/evaluate \\
-  -H "Authorization: Bearer rk_live_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "rulebook_id": "rb_abc123",
-    "input": {
-      "credit_score": 720,
-      "annual_income": 85000,
-      "loan_amount": 25000
+const CODE_EXAMPLE = `const payload = {
+  input: "Applicant: age 28, income 85000, credit score 740",
+  rulebook_id: "rb_abc123",
+  rulebook_name: "Loan Eligibility",
+  rules: [
+    {
+      id: "rule_min_credit_score",
+      name: "Minimum credit score",
+      description: "Fail if credit score is below 650",
+      reason: "Credit score is below threshold"
     }
-  }'`;
+  ],
+  output_type: "pass_fail"
+};
+
+const response = await fetch("/api/evaluate", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include",
+  body: JSON.stringify(payload)
+});
+
+const data = await response.json();`;
 
 const RESPONSE_EXAMPLE = `{
-  "verdict": "pass",
-  "reason": "Application meets all eligibility criteria",
-  "fired_rule": "Default Pass",
-  "execution_trace": [
-    { "rule": "Min Credit Score", "matched": false },
-    { "rule": "Income Ratio",     "matched": false },
-    { "rule": "Default Pass",     "matched": true  }
-  ],
-  "latency_ms": 42,
-  "credits_used": 1
+  "success": true,
+  "result": {
+    "id": "run_123",
+    "rulebook_id": "rb_abc123",
+    "rulebook_name": "Loan Eligibility",
+    "verdict": "pass",
+    "reason": "All active rules passed.",
+    "evaluations": [
+      {
+        "rule_id": "rule_min_credit_score",
+        "rule_name": "Minimum credit score",
+        "verdict": "pass",
+        "reason": "Credit score meets threshold"
+      }
+    ],
+    "latency_ms": 132,
+    "timestamp": "2026-02-10T12:00:00.000Z"
+  }
 }`;
 
 export default function DevelopersQuickstartPage() {
@@ -43,11 +63,20 @@ export default function DevelopersQuickstartPage() {
           Developers
         </p>
         <h1 className="text-4xl font-semibold tracking-tight text-[var(--foreground)] sm:text-5xl">
-          One API call. Structured verdict.
+          Session-auth API quickstart
         </h1>
         <p className="mt-5 max-w-2xl mx-auto text-base leading-relaxed text-[var(--muted-foreground)]">
-          Every published rulebook in RuleKit gets a live REST endpoint. Send JSON input, get back a pass/fail verdict with the exact rule that fired, an execution trace, and latency metrics.
+          RuleKit currently authenticates API calls with your signed-in Supabase session cookie.
+          Call <code className="font-mono">/api/evaluate</code> from your browser app with
+          {' '}<code className="font-mono">credentials: &quot;include&quot;</code>.
         </p>
+      </section>
+
+      <section className="pb-8">
+        <div className="rounded-xl border border-amber-200/70 bg-amber-50/50 p-4 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/10 dark:text-amber-200">
+          External API keys and server-to-server auth are not available yet.
+          Use the in-app API tab for each rulebook to copy a valid payload.
+        </div>
       </section>
 
       {/* Request */}
@@ -58,7 +87,7 @@ export default function DevelopersQuickstartPage() {
         <div className="rounded-xl border border-[var(--border)] bg-[#1e1e2e] overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">POST</span>
-            <span className="text-xs text-white/60 font-mono">/v1/evaluate</span>
+            <span className="text-xs text-white/60 font-mono">/api/evaluate</span>
           </div>
           <pre className="p-4 text-[13px] leading-relaxed text-white/90 font-mono overflow-x-auto">
             {CODE_EXAMPLE}
@@ -69,7 +98,7 @@ export default function DevelopersQuickstartPage() {
       {/* Response */}
       <section className="pb-16">
         <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
-          Get a structured response
+          Read the response
         </h2>
         <div className="rounded-xl border border-[var(--border)] bg-[#1e1e2e] overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
@@ -92,17 +121,17 @@ export default function DevelopersQuickstartPage() {
             {
               step: '1',
               title: 'Create a rulebook',
-              desc: 'Define your schema and rules in the Rulebook Studio. Publish when ready.',
+              desc: 'Define schema and rules in Rulebook Studio, then enable the rules you want to run.',
             },
             {
               step: '2',
-              title: 'Generate an API key',
-              desc: 'Go to Settings → API Keys. Create a key scoped to your environment (draft or live).',
+              title: 'Copy payload from API tab',
+              desc: 'Open Rulebooks -> API and copy the payload template with rulebook_id, rulebook_name, and rules.',
             },
             {
               step: '3',
-              title: 'Call the endpoint',
-              desc: 'POST your input JSON to /v1/evaluate with your API key. Parse the verdict.',
+              title: 'Call /api/evaluate',
+              desc: 'From your signed-in browser app, send JSON with credentials: include and parse success/result.',
             },
           ].map((s) => (
             <div key={s.step} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
@@ -116,17 +145,17 @@ export default function DevelopersQuickstartPage() {
         </div>
       </section>
 
-      {/* SDK & features */}
+      {/* Practical notes */}
       <section className="py-16 border-t border-[var(--border)]">
         <h2 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] text-center mb-10">
-          Built for developer experience
+          Practical notes
         </h2>
         <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {[
-            { title: 'Versioned endpoints', desc: 'Pin to a specific rulebook version for deterministic behavior in production.' },
-            { title: 'Execution traces', desc: 'Every response includes the full rule evaluation order, so you can debug without leaving your terminal.' },
-            { title: 'Webhook support', desc: 'Subscribe to run.completed and run.failed events to trigger downstream workflows.' },
-            { title: 'Credit metering', desc: 'Each response includes credits_used so you can track consumption programmatically.' },
+            { title: 'Request shape is strict', desc: 'Payload must include input (string), rulebook_id, rulebook_name, and rules array.' },
+            { title: 'Session cookie required', desc: 'Unauthenticated calls return 401. Include credentials for browser fetch calls.' },
+            { title: 'Rate limits apply', desc: 'When traffic spikes, the endpoint may return 429. Add retry/backoff handling.' },
+            { title: 'Deterministic debugging', desc: 'Store input and returned evaluations so users can understand why a verdict happened.' },
           ].map((f) => (
             <div key={f.title} className="flex gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] mt-2 flex-shrink-0" />
@@ -142,10 +171,10 @@ export default function DevelopersQuickstartPage() {
       {/* CTA */}
       <section className="py-16 border-t border-[var(--border)] text-center">
         <h2 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] mb-3">
-          Start building
+          Build with the current API model
         </h2>
         <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-md mx-auto">
-          Create your free account, publish a rulebook, and make your first API call in under 5 minutes.
+          Start with a signed-in browser integration now. Expand later when external API auth is available.
         </p>
         <div className="flex items-center justify-center gap-3">
           <Link

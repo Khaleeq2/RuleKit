@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BookOpen, Code2, FlaskConical, GitBranch, Rocket, Key, BarChart3, Webhook } from 'lucide-react';
+import { BookOpen, Code2, FlaskConical, GitBranch, Rocket, Shield, BarChart3, Plug } from 'lucide-react';
 import { buildPublicMetadata } from '../../_lib/public-metadata';
 
 export const metadata: Metadata = buildPublicMetadata({
   title: 'Documentation — RuleKit',
   description:
-    'Learn how to build, test, deploy, and integrate rulebooks with RuleKit. Guides, API reference, and examples.',
+    'Learn how to build, test, deploy, and integrate rulebooks with RuleKit. Guides and API examples that match current product behavior.',
   canonicalPath: '/resources/docs',
 });
 
@@ -14,7 +14,7 @@ const DOC_SECTIONS = [
   {
     icon: BookOpen,
     title: 'Getting Started',
-    description: 'Create your account, build your first rulebook, and run your first evaluation in under 5 minutes.',
+    description: 'Create your account, build your first rulebook, and run your first evaluation quickly.',
     links: [
       { label: 'Quickstart guide', href: '/developers/quickstart' },
       { label: 'Core concepts', href: '/product/how-it-works' },
@@ -23,7 +23,7 @@ const DOC_SECTIONS = [
   {
     icon: Code2,
     title: 'Rulebook Studio',
-    description: 'Define input schemas with typed fields, build ordered rule chains, and configure pass/fail outcomes.',
+    description: 'Define input schemas, build ordered rules, and tune pass/fail outcomes.',
     links: [
       { label: 'Schema reference', href: '/product/decision-studio' },
       { label: 'Rule conditions', href: '/product/decision-studio' },
@@ -32,7 +32,7 @@ const DOC_SECTIONS = [
   {
     icon: FlaskConical,
     title: 'Testing',
-    description: 'Author test cases with expected verdicts, run individual tests or full suites, and review execution traces.',
+    description: 'Create test cases, run suites, and compare expected vs actual verdicts.',
     links: [
       { label: 'Test case guide', href: '/product/how-it-works' },
       { label: 'Running suites', href: '/product/how-it-works' },
@@ -41,7 +41,7 @@ const DOC_SECTIONS = [
   {
     icon: GitBranch,
     title: 'Versioning',
-    description: 'Snapshot schema + rules into immutable versions. Compare versions side by side.',
+    description: 'Track how your rulebooks evolve over time and compare changes safely.',
     links: [
       { label: 'Version lifecycle', href: '/product/how-it-works' },
     ],
@@ -49,34 +49,34 @@ const DOC_SECTIONS = [
   {
     icon: Rocket,
     title: 'Deployments',
-    description: 'Promote versions to draft or live environments. Roll back instantly if needed.',
+    description: 'Promote approved changes through your environments with clear status visibility.',
     links: [
       { label: 'Deployment guide', href: '/product/how-it-works' },
       { label: 'Environment model', href: '/product/how-it-works' },
     ],
   },
   {
-    icon: Key,
-    title: 'API Keys & Auth',
-    description: 'Create scoped API keys for draft and live environments. Rotate and revoke keys securely.',
+    icon: Shield,
+    title: 'Authentication (current)',
+    description: 'API calls are authenticated via signed-in Supabase session cookies from browser clients.',
     links: [
-      { label: 'API key management', href: '/developers/quickstart' },
+      { label: 'Session-auth quickstart', href: '/developers/quickstart' },
     ],
   },
   {
     icon: BarChart3,
     title: 'Run History',
-    description: 'Every evaluation is logged with input, output, fired rule, trace, latency, and credits. Filter and export.',
+    description: 'Review verdicts, reasons, latency, and usage trends across past checks.',
     links: [
       { label: 'History overview', href: '/product/how-it-works' },
     ],
   },
   {
-    icon: Webhook,
-    title: 'Webhooks & Integrations',
-    description: 'Subscribe to run events and push verdicts to Slack, Zapier, or your own endpoints.',
+    icon: Plug,
+    title: 'Integrations roadmap',
+    description: 'Direct external API-key auth and event integrations are planned. Current docs focus on available functionality.',
     links: [
-      { label: 'Webhook setup', href: '/developers/quickstart' },
+      { label: 'Current API capabilities', href: '/developers/quickstart' },
     ],
   },
 ] as const;
@@ -93,7 +93,7 @@ export default function ResourcesDocsPage() {
           Documentation
         </h1>
         <p className="mt-5 max-w-2xl mx-auto text-base leading-relaxed text-[var(--muted-foreground)]">
-          Everything you need to build, test, deploy, and integrate business rules with RuleKit.
+          Product docs that match current behavior, with clear notes where features are planned.
         </p>
       </section>
 
@@ -123,7 +123,7 @@ export default function ResourcesDocsPage() {
                     href={link.href}
                     className="text-xs font-medium text-[var(--brand)] hover:underline"
                   >
-                    {link.label} →
+                    {link.label} {'->'}
                   </Link>
                 ))}
               </div>
@@ -135,10 +135,10 @@ export default function ResourcesDocsPage() {
       {/* Help */}
       <section className="py-16 border-t border-[var(--border)] text-center">
         <h2 className="text-xl font-semibold tracking-tight text-[var(--foreground)] mb-2">
-          Can&apos;t find what you need?
+          Need help implementing?
         </h2>
         <p className="text-sm text-[var(--muted-foreground)] mb-6">
-          Reach out and we&apos;ll help you get unblocked.
+          Contact support for implementation guidance or API setup help.
         </p>
         <div className="flex items-center justify-center gap-3">
           <Link
