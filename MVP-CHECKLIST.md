@@ -119,7 +119,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
   - Immediate redirect to rules and hidden secondary sections.
   - Fix: add guided "Overview" as default entry.
 
-- [ ] **C10: Mobile/density issues in schema and tests**
+- [x] **C10: Mobile/density issues in schema and tests**
   - Dense grid layouts are hard for average users.
   - Fix: responsive stacked editors and progressive detail.
 
@@ -443,12 +443,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] Default creation path uses one simple outcome model.
     - [x] Advanced modes still available but not blocking first-run.
 
-- [ ] **T11: Simplify schema editor for non-technical users**
+- [x] **T11: Simplify schema editor for non-technical users**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/schema/page.tsx`
   - Change: Improve responsive behavior and simplify first-run field setup.
   - Acceptance:
-    - [ ] Editor remains usable on smaller screens.
-    - [ ] User can add one field without needing JSON knowledge.
+    - [x] Editor remains usable on smaller screens.
+    - [x] User can add one field without needing JSON knowledge.
 
 - [ ] **T12: Simplify tests editor copy and expected input guidance**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/tests/page.tsx`

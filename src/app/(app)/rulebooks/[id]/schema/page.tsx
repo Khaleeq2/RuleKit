@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import {
   Plus,
   Trash2,
-  GripVertical,
   FileJson,
   Save,
   AlertCircle,
@@ -241,22 +240,12 @@ export default function SchemaPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Header row */}
-              <div className="grid grid-cols-[auto_1fr_120px_80px_1fr_1fr_auto] gap-3 px-3 py-2 text-xs font-medium text-[var(--muted-foreground)] uppercase tracking-wide">
-                <div className="w-6" />
-                <div>Name</div>
-                <div>Type</div>
-                <div>Required</div>
-                <div>Description</div>
-                <div>Example</div>
-                <div className="w-8" />
-              </div>
-
-              {/* Field rows */}
+              {/* Field cards */}
               {fields.map((field, index) => (
-                <FieldRow
+                <FieldCard
                   key={field.id}
                   field={field}
+                  index={index}
                   onUpdate={(updates) => handleUpdateField(field.id, updates)}
                   onRemove={() => handleRemoveField(field.id)}
                 />
@@ -295,106 +284,97 @@ export default function SchemaPage() {
 }
 
 // ============================================
-// Field Row Component
+// Field Card Component — responsive stacked layout
 // ============================================
 
-function FieldRow({
+function FieldCard({
   field,
+  index,
   onUpdate,
   onRemove,
 }: {
   field: SchemaField;
+  index: number;
   onUpdate: (updates: Partial<SchemaField>) => void;
   onRemove: () => void;
 }) {
-  const [descFocused, setDescFocused] = useState(false);
+  const examplePlaceholder =
+    field.type === 'number' ? 'e.g., 720' :
+    field.type === 'boolean' ? 'true / false' :
+    field.type === 'enum' ? 'e.g., option_a' :
+    field.type === 'date' ? 'e.g., 2025-01-15' :
+    'e.g., sample text';
 
   return (
-    <div className={`grid gap-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--card)] transition-all duration-200 ${descFocused ? 'grid-cols-[auto_1fr_120px_80px_1fr_auto] grid-rows-[auto_auto]' : 'grid-cols-[auto_1fr_120px_80px_1fr_1fr_auto] items-center'}`}>
-      <div className="cursor-grab text-[var(--muted-foreground)]">
-        <GripVertical className="w-4 h-4" />
+    <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--card)]">
+      {/* Top row: field number + delete */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[11px] font-medium text-[var(--muted-foreground)] uppercase tracking-wider">
+          Field {index + 1}
+        </span>
+        <Button variant="ghost" size="icon" onClick={onRemove} className="w-7 h-7 text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
       </div>
 
-      <Input
-        value={field.name}
-        onChange={(e) => onUpdate({ name: e.target.value.replace(/\s/g, '_').toLowerCase() })}
-        placeholder="field_name"
-        className="font-mono text-sm h-9"
-      />
-
-      <Select value={field.type} onValueChange={(v) => onUpdate({ type: v as FieldType })}>
-        <SelectTrigger className="h-9">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {(Object.entries(FIELD_TYPE_LABELS) as [FieldType, string][]).map(([value, label]) => (
-            <SelectItem key={value} value={value}>{label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <div className="flex justify-center">
-        <Switch
-          checked={field.required}
-          onCheckedChange={(checked) => onUpdate({ required: checked })}
-        />
-      </div>
-
-      {descFocused ? (
-        <Textarea
-          value={field.description}
-          onChange={(e) => onUpdate({ description: e.target.value })}
-          onBlur={() => setDescFocused(false)}
-          placeholder="Description"
-          className="text-sm min-h-[60px] resize-none transition-all duration-200"
-          autoFocus
-          rows={2}
-        />
-      ) : (
-        <Input
-          value={field.description}
-          onChange={(e) => onUpdate({ description: e.target.value })}
-          onFocus={() => setDescFocused(true)}
-          placeholder="Description"
-          className="text-sm h-9 truncate"
-        />
-      )}
-
-      {!descFocused && (
-        <Input
-          value={field.example}
-          onChange={(e) => onUpdate({ example: e.target.value })}
-          placeholder={
-            field.type === 'number' ? 'e.g., 720' :
-            field.type === 'boolean' ? 'true / false' :
-            field.type === 'enum' ? 'e.g., option_a' :
-            field.type === 'date' ? 'e.g., 2025-01-15' :
-            'e.g., sample text'
-          }
-          className="text-sm h-9"
-        />
-      )}
-
-      <Button variant="ghost" size="icon" onClick={onRemove} className="text-[var(--muted-foreground)] hover:text-[var(--destructive)]">
-        <Trash2 className="w-4 h-4" />
-      </Button>
-
-      {descFocused && (
-        <div className="col-start-2 col-span-4">
+      {/* Form grid — 2 columns on desktop, 1 on mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-[12px]">Name</Label>
           <Input
-            value={field.example}
-            onChange={(e) => onUpdate({ example: e.target.value })}
-            placeholder={
-              field.type === 'number' ? 'e.g., 720' :
-              field.type === 'boolean' ? 'true / false' :
-              field.type === 'enum' ? 'e.g., option_a' :
-              field.type === 'date' ? 'e.g., 2025-01-15' :
-              'e.g., sample text'
-            }
+            value={field.name}
+            onChange={(e) => onUpdate({ name: e.target.value.replace(/\s/g, '_').toLowerCase() })}
+            placeholder="field_name"
+            className="font-mono text-sm h-9"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-[12px]">Type</Label>
+          <Select value={field.type} onValueChange={(v) => onUpdate({ type: v as FieldType })}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.entries(FIELD_TYPE_LABELS) as [FieldType, string][]).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-[12px]">Description</Label>
+          <Input
+            value={field.description}
+            onChange={(e) => onUpdate({ description: e.target.value })}
+            placeholder="What this field represents"
             className="text-sm h-9"
           />
         </div>
-      )}
+
+        <div className="space-y-1.5">
+          <Label className="text-[12px]">Example value</Label>
+          <Input
+            value={field.example}
+            onChange={(e) => onUpdate({ example: e.target.value })}
+            placeholder={examplePlaceholder}
+            className="text-sm h-9"
+          />
+        </div>
+      </div>
+
+      {/* Required toggle — below the grid */}
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--border)]/40">
+        <Switch
+          id={`required-${field.id}`}
+          checked={field.required}
+          onCheckedChange={(checked) => onUpdate({ required: checked })}
+        />
+        <Label htmlFor={`required-${field.id}`} className="text-[12px] text-[var(--muted-foreground)] cursor-pointer">
+          Required field
+        </Label>
+      </div>
     </div>
   );
 }
