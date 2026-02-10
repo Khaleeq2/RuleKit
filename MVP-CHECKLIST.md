@@ -111,7 +111,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
   - Users see `.env`/API key troubleshooting text in product.
   - Fix: split user-facing and developer-facing error language.
 
-- [ ] **C8: Integrations page is a dead-end**
+- [x] **C8: Integrations page is a dead-end**
   - Placeholder routing and indirect instructions.
   - Fix: either functional integrations center or remove from nav.
 
@@ -457,11 +457,11 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] User can create and run one test with built-in guidance.
     - [x] Expected vs actual output is visually obvious.
 
-- [ ] **T13: Rework dead-end integrations experience**
+- [x] **T13: Rework dead-end integrations experience**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/integrations/page.tsx`
   - Change: Either provide functional setup flow or remove/de-emphasize route.
   - Acceptance:
-    - [ ] No dead-end placeholder experience remains on primary nav routes.
+    - [x] No dead-end placeholder experience remains on primary nav routes.
 
 - [ ] **T14: Make API docs match backend auth behavior**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/api/page.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/lib/api-auth.ts`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/api/evaluate/route.ts`
