@@ -8,13 +8,13 @@ const supabaseAdmin = createClient(
 );
 
 // ============================================
-// Sample Loan Eligibility Decision
+// Sample Loan Eligibility Rulebook
 // Pre-loaded for every new user to enable instant evaluation
 // ============================================
 
-const SEED_DECISION = {
+const SEED_RULEBOOK = {
   name: 'Loan Eligibility',
-  description: 'Determines whether a loan applicant qualifies based on age, income, and credit score. This is a sample decision — edit or delete it anytime.',
+  description: 'Determines whether a loan applicant qualifies based on age, income, and credit score. This is a sample rulebook — edit or delete it anytime.',
   status: 'published' as const,
 };
 
@@ -32,8 +32,8 @@ const SEED_RULES = [
     name: 'Age Requirement',
     description: 'Applicant must be at least 18 years old to be eligible for a loan.',
     order: 1,
-    condition: {},
-    result: 'pass_fail',
+    condition: { type: 'simple', field: 'age', operator: 'lt', value: 18 },
+    result: 'fail',
     reason: 'Applicants under 18 are not eligible for loan products.',
     enabled: true,
   },
@@ -41,8 +41,8 @@ const SEED_RULES = [
     name: 'Minimum Income',
     description: 'Applicant must have an annual income of at least $30,000.',
     order: 2,
-    condition: {},
-    result: 'pass_fail',
+    condition: { type: 'simple', field: 'income', operator: 'lt', value: 30000 },
+    result: 'fail',
     reason: 'Minimum income threshold ensures repayment capacity.',
     enabled: true,
   },
@@ -50,9 +50,18 @@ const SEED_RULES = [
     name: 'Credit Score Check',
     description: 'Applicant must have a credit score of 650 or higher.',
     order: 3,
-    condition: {},
-    result: 'pass_fail',
+    condition: { type: 'simple', field: 'credit_score', operator: 'lt', value: 650 },
+    result: 'fail',
     reason: 'A credit score of 650+ indicates acceptable credit risk.',
+    enabled: true,
+  },
+  {
+    name: 'Default Pass',
+    description: 'Approve if no eligibility rules fail.',
+    order: 4,
+    condition: { type: 'simple', field: 'age', operator: 'gte', value: 0 },
+    result: 'pass',
+    reason: 'Applicant meets all eligibility requirements.',
     enabled: true,
   },
 ];
@@ -64,36 +73,37 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Check if user already has decisions (don't re-seed)
+    // Check if user already has rulebooks (don't re-seed)
     const { data: existing } = await supabaseAdmin
-      .from('decisions')
+      .from('rulebooks')
       .select('id')
       .eq('user_id', user.id)
       .limit(1);
 
     if (existing && existing.length > 0) {
-      return NextResponse.json({ seeded: false, reason: 'User already has decisions' });
+      return NextResponse.json({ seeded: false, reason: 'User already has rulebooks' });
     }
 
-    // Create decision
-    const { data: decision, error: decisionError } = await supabaseAdmin
-      .from('decisions')
+    // Create rulebook
+    const { data: rulebook, error: rulebookError } = await supabaseAdmin
+      .from('rulebooks')
       .insert({
-        name: SEED_DECISION.name,
-        description: SEED_DECISION.description,
-        status: SEED_DECISION.status,
+        name: SEED_RULEBOOK.name,
+        description: SEED_RULEBOOK.description,
+        status: SEED_RULEBOOK.status,
         user_id: user.id,
       })
       .select()
       .single();
 
-    if (decisionError) throw decisionError;
+    if (rulebookError) throw rulebookError;
 
     // Create schema
     const { error: schemaError } = await supabaseAdmin
       .from('schemas')
       .insert({
-        decision_id: decision.id,
+        user_id: user.id,
+        rulebook_id: rulebook.id,
         fields: SEED_SCHEMA.fields,
         output_type: SEED_SCHEMA.output_type,
       });
@@ -101,26 +111,27 @@ export async function POST(req: NextRequest) {
     if (schemaError) throw schemaError;
 
     // Create rules
-    const rulesWithDecisionId = SEED_RULES.map(rule => ({
+    const rulesWithRulebookId = SEED_RULES.map(rule => ({
       ...rule,
-      decision_id: decision.id,
+      user_id: user.id,
+      rulebook_id: rulebook.id,
     }));
 
     const { error: rulesError } = await supabaseAdmin
-      .from('decision_rules')
-      .insert(rulesWithDecisionId);
+      .from('rules')
+      .insert(rulesWithRulebookId);
 
     if (rulesError) throw rulesError;
 
     return NextResponse.json({
       seeded: true,
-      decisionId: decision.id,
-      decisionName: decision.name,
+      rulebookId: rulebook.id,
+      rulebookName: rulebook.name,
     });
   } catch (error) {
-    console.error('Seed decision error:', error);
+    console.error('Seed rulebook error:', error);
     return NextResponse.json(
-      { error: 'Failed to create sample decision' },
+      { error: 'Failed to create sample rulebook' },
       { status: 500 },
     );
   }

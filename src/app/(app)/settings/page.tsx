@@ -269,7 +269,7 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-medium text-[var(--foreground)]">Failure alerts</p>
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    Get notified when decisions fail
+                    Get notified when evaluations fail
                   </p>
                 </div>
                 <Switch
@@ -282,7 +282,7 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-medium text-[var(--foreground)]">Weekly report</p>
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    Receive a weekly summary of your decision usage
+                    Receive a weekly summary of your evaluation usage
                   </p>
                 </div>
                 <Switch

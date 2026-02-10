@@ -39,7 +39,7 @@ export function HowItWorksV2Section() {
               </span>
             </h2>
             <p className="mx-auto mt-4 max-w-[48ch] text-[15px] leading-relaxed text-slate-500">
-              Go from scattered checklists to automated, auditable decisions in under two minutes.
+              Go from scattered checklists to automated, auditable verdicts in under two minutes.
             </p>
           </div>
 

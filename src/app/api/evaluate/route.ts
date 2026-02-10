@@ -48,9 +48,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<EvaluateRespo
       );
     }
 
-    if (!body.decision_id || !body.decision_name) {
+    if (!body.rulebook_id || !body.rulebook_name) {
       return NextResponse.json(
-        { success: false, error: 'Missing decision_id or decision_name', error_type: 'validation' },
+        { success: false, error: 'Missing rulebook_id or rulebook_name', error_type: 'validation' },
         { status: 400 }
       );
     }
@@ -68,8 +68,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<EvaluateRespo
     const result = await evaluateRules(
       body.input,
       body.rules,
-      body.decision_id,
-      body.decision_name,
+      body.rulebook_id,
+      body.rulebook_name,
       body.output_type || 'pass_fail'
     );
 

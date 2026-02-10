@@ -41,7 +41,7 @@ function toTransaction(row: any): CreditTransaction {
     amount: row.amount,
     description: row.description ?? '',
     runId: row.run_id,
-    decisionId: row.decision_id,
+    rulebookId: row.rulebook_id,
     createdAt: row.created_at,
   };
 }
@@ -90,7 +90,7 @@ export const billingRepo = {
     return toBalance(data);
   },
 
-  async deductCredits(amount: number, description: string, decisionId?: string, runId?: string): Promise<CreditBalance> {
+  async deductCredits(amount: number, description: string, rulebookId?: string, runId?: string): Promise<CreditBalance> {
     const balance = await this.getBalance();
 
     if (balance.balance < amount) {
@@ -104,7 +104,7 @@ export const billingRepo = {
       type: 'usage',
       amount: -amount,
       description,
-      decisionId,
+      rulebookId,
       runId,
     });
 
@@ -136,7 +136,7 @@ export const billingRepo = {
   async getTransactions(options?: {
     limit?: number;
     type?: TransactionType;
-    decisionId?: string;
+    rulebookId?: string;
   }): Promise<CreditTransaction[]> {
     let query = sb()
       .from('credit_transactions')
@@ -144,7 +144,7 @@ export const billingRepo = {
       .order('created_at', { ascending: false });
 
     if (options?.type) query = query.eq('type', options.type);
-    if (options?.decisionId) query = query.eq('decision_id', options.decisionId);
+    if (options?.rulebookId) query = query.eq('rulebook_id', options.rulebookId);
 
     const limit = options?.limit || 50;
     query = query.limit(limit);
@@ -162,7 +162,7 @@ export const billingRepo = {
         amount: input.amount,
         description: input.description,
         run_id: input.runId,
-        decision_id: input.decisionId,
+        rulebook_id: input.rulebookId,
       })
       .select()
       .single();
@@ -174,7 +174,7 @@ export const billingRepo = {
 
   async getUsageStats(days: number = 7): Promise<{
     totalUsed: number;
-    byDecision: { decisionId: string; amount: number }[];
+    byRulebook: { rulebookId: string; amount: number }[];
     dailyUsage: { date: string; amount: number }[];
   }> {
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -184,15 +184,15 @@ export const billingRepo = {
 
     const totalUsed = recentTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    const byDecisionMap = new Map<string, number>();
+    const byRulebookMap = new Map<string, number>();
     recentTransactions.forEach(t => {
-      if (t.decisionId) {
-        const current = byDecisionMap.get(t.decisionId) || 0;
-        byDecisionMap.set(t.decisionId, current + Math.abs(t.amount));
+      if (t.rulebookId) {
+        const current = byRulebookMap.get(t.rulebookId) || 0;
+        byRulebookMap.set(t.rulebookId, current + Math.abs(t.amount));
       }
     });
-    const byDecision = Array.from(byDecisionMap.entries())
-      .map(([decisionId, amount]) => ({ decisionId, amount }))
+    const byRulebook = Array.from(byRulebookMap.entries())
+      .map(([rulebookId, amount]) => ({ rulebookId, amount }))
       .sort((a, b) => b.amount - a.amount);
 
     const dailyMap = new Map<string, number>();
@@ -205,7 +205,7 @@ export const billingRepo = {
       .map(([date, amount]) => ({ date, amount }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    return { totalUsed, byDecision, dailyUsage };
+    return { totalUsed, byRulebook, dailyUsage };
   },
 
   async estimateCredits(complexity: 'simple' | 'medium' | 'complex' = 'simple'): Promise<number> {

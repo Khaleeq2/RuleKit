@@ -24,7 +24,7 @@ interface PassedRule {
 interface UseCase {
   uploadFile: string;
   fixedFile: string;
-  decisionName: string;
+  rulebookName: string;
   failCount: number;
   failedRules: FailedRule[];
   passedRules: PassedRule[];
@@ -38,7 +38,7 @@ const USE_CASES: UseCase[] = [
   {
     uploadFile: 'q3-expense-report.pdf',
     fixedFile: 'q3-expense-report-v2.pdf',
-    decisionName: 'Expense Policy',
+    rulebookName: 'Expense Policy',
     failCount: 2,
     failedRules: [
       { name: 'Receipt Attached', desc: 'No receipt found for expenses over $25', passed: false, pct: '0%' },
@@ -60,7 +60,7 @@ const USE_CASES: UseCase[] = [
   {
     uploadFile: 'weekly-digest-draft.md',
     fixedFile: 'weekly-digest-final.md',
-    decisionName: 'Content Quality',
+    rulebookName: 'Content Quality',
     failCount: 2,
     failedRules: [
       { name: 'Subject Line Length', desc: 'Subject line exceeds 60 characters', passed: false, pct: '0%' },
@@ -82,7 +82,7 @@ const USE_CASES: UseCase[] = [
   {
     uploadFile: 'launch-page-v3.html',
     fixedFile: 'launch-page-v4.html',
-    decisionName: 'Launch Readiness',
+    rulebookName: 'Launch Readiness',
     failCount: 2,
     failedRules: [
       { name: 'No Placeholder Text', desc: 'Found "Lorem ipsum" in hero section', passed: false, pct: '0%' },
@@ -175,7 +175,7 @@ function UseCaseScene({ uc }: { uc: UseCase }) {
                 <ShieldX className="h-5 w-5 text-red-500" strokeWidth={2} />
                 <div>
                   <p className="text-[14px] font-bold text-red-500">Failed</p>
-                  <p className="text-[11px] text-slate-500">{uc.decisionName}</p>
+                  <p className="text-[11px] text-slate-500">{uc.rulebookName}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 text-red-500">
@@ -258,7 +258,7 @@ function UseCaseScene({ uc }: { uc: UseCase }) {
                 <ShieldCheck className="h-5 w-5 text-emerald-500" strokeWidth={2} />
                 <div>
                   <p className="text-[14px] font-bold text-emerald-500">Passed</p>
-                  <p className="text-[11px] text-slate-500">{uc.decisionName}</p>
+                  <p className="text-[11px] text-slate-500">{uc.rulebookName}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 text-emerald-500">

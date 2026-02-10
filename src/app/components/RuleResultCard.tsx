@@ -198,7 +198,7 @@ export function RuleResultCard({ result, onRetry }: RuleResultCardProps) {
               {passed ? 'Passed' : 'Needs Review'}
             </p>
             <p className="text-xs text-[var(--muted-foreground)]">
-              {result.decision_name}
+              {result.rulebook_name}
             </p>
           </div>
         </div>

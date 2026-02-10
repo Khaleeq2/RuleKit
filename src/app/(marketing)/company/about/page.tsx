@@ -5,13 +5,13 @@ import { buildPublicMetadata } from '../../_lib/public-metadata';
 export const metadata: Metadata = buildPublicMetadata({
   title: 'About RuleKit — Our Mission',
   description:
-    'RuleKit exists to give every team the power to define, test, and deploy business decisions without writing code or waiting on engineering.',
+    'RuleKit exists to give every team the power to define, test, and deploy business rules without writing code or waiting on engineering.',
   canonicalPath: '/company/about',
 });
 
 const VALUES = [
   {
-    title: 'Decisions should be explicit',
+    title: 'Verdicts should be explicit',
     description:
       'Every verdict should trace back to a named rule with a clear reason. No black boxes, no hidden weights, no "it depends."',
   },
@@ -28,7 +28,7 @@ const VALUES = [
   {
     title: 'Everyone should have access',
     description:
-      'Product managers, compliance officers, and ops leads should be able to read, write, and audit decision logic — not just engineers.',
+      'Product managers, compliance officers, and ops leads should be able to read, write, and audit rule logic — not just engineers.',
   },
 ] as const;
 
@@ -44,7 +44,7 @@ export default function CompanyAboutPage() {
           Making business logic visible, testable, and deployable
         </h1>
         <p className="mt-5 max-w-2xl mx-auto text-base leading-relaxed text-[var(--muted-foreground)]">
-          RuleKit was built because too many critical business decisions live in spreadsheets, Slack threads, or buried inside application code that only one engineer understands. We believe there&apos;s a better way.
+          RuleKit was built because too many critical business rules live in spreadsheets, Slack threads, or buried inside application code that only one engineer understands. We believe there&apos;s a better way.
         </p>
       </section>
 
@@ -55,7 +55,7 @@ export default function CompanyAboutPage() {
             Our mission
           </h2>
           <p className="text-base leading-relaxed text-[var(--muted-foreground)]">
-            Give every team — from startups to enterprises — a structured, auditable way to define and operate business decisions. No vendor lock-in. No black-box models. Just clear rules, tested behavior, and versioned deployments.
+            Give every team — from startups to enterprises — a structured, auditable way to define and operate business rules. No vendor lock-in. No black-box models. Just clear rules, tested behavior, and versioned deployments.
           </p>
         </div>
       </section>
@@ -87,10 +87,10 @@ export default function CompanyAboutPage() {
           </h2>
           <div className="space-y-4 text-sm leading-relaxed text-[var(--muted-foreground)]">
             <p>
-              RuleKit is a self-serve decision engine. You define input schemas, write ordered rules with conditions and outcomes, test them with automated suites, version and deploy through structured environments, and monitor every evaluation in real time.
+              RuleKit is a self-serve rules engine. You define input schemas, write ordered rules with conditions and outcomes, test them with automated suites, version and deploy through structured environments, and monitor every evaluation in real time.
             </p>
             <p>
-              Every published decision exposes a REST API endpoint. Send JSON, get a structured verdict with the exact rule that fired, a full execution trace, and latency metrics. Integrate into any backend, automation, or webhook pipeline.
+              Every published rulebook exposes a REST API endpoint. Send JSON, get a structured verdict with the exact rule that fired, a full execution trace, and latency metrics. Integrate into any backend, automation, or webhook pipeline.
             </p>
             <p>
               We also support conversational evaluation: paste raw data or describe a scenario in plain English, and RuleKit&apos;s AI-powered evaluator maps your input to the active rule set and returns a verdict with evidence.

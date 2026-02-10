@@ -11,17 +11,17 @@ export interface OnboardingState {
   welcomed: boolean;        // Welcome modal shown
   tourCompleted: boolean;   // Product tour finished
   firstEvalDone: boolean;   // First evaluation completed
-  firstDecisionCreated: boolean; // Created own decision (not seed)
+  firstRulebookCreated: boolean; // Created own rulebook (not seed)
   firstTestRun: boolean;    // Ran a test suite
-  firstDeploy: boolean;     // Deployed a decision
-  seedDecisionId: string | null; // ID of the seeded sample decision
+  firstDeploy: boolean;     // Deployed a rulebook
+  seedDecisionId: string | null; // ID of the seeded sample rulebook
 }
 
 const DEFAULT_STATE: OnboardingState = {
   welcomed: false,
   tourCompleted: false,
   firstEvalDone: false,
-  firstDecisionCreated: false,
+  firstRulebookCreated: false,
   firstTestRun: false,
   firstDeploy: false,
   seedDecisionId: null,
@@ -51,16 +51,16 @@ export async function updateOnboardingState(updates: Partial<OnboardingState>): 
 }
 
 // ============================================
-// Seed decision — called on first visit to /home
+// Seed rulebook — called on first visit to /home
 // ============================================
 
-export async function seedDecisionIfNeeded(): Promise<{
+export async function seedRulebookIfNeeded(): Promise<{
   seeded: boolean;
-  decisionId?: string;
-  decisionName?: string;
+  rulebookId?: string;
+  rulebookName?: string;
 }> {
   try {
-    const res = await fetch('/api/seed-decision', { method: 'POST' });
+    const res = await fetch('/api/seed-rulebook', { method: 'POST' });
     if (!res.ok) return { seeded: false };
     return await res.json();
   } catch {
@@ -83,11 +83,11 @@ export interface ChecklistItem {
 export function getChecklistItems(state: OnboardingState): ChecklistItem[] {
   return [
     {
-      id: 'create-decision',
-      label: 'Create your first ruleset',
+      id: 'create-rulebook',
+      label: 'Create your first rulebook',
       description: 'Define rules for your use case',
-      completed: state.firstDecisionCreated,
-      href: '/decisions/new',
+      completed: state.firstRulebookCreated,
+      href: '/rulebooks/new',
     },
     {
       id: 'first-eval',
@@ -101,14 +101,14 @@ export function getChecklistItems(state: OnboardingState): ChecklistItem[] {
       label: 'Run a test suite',
       description: 'Verify your rules with test cases',
       completed: state.firstTestRun,
-      href: '/decisions',
+      href: '/rulebooks',
     },
     {
       id: 'deploy',
-      label: 'Deploy your ruleset',
+      label: 'Deploy your rulebook',
       description: 'Make your rules available via API',
       completed: state.firstDeploy,
-      href: '/decisions',
+      href: '/rulebooks',
     },
   ];
 }
@@ -116,7 +116,7 @@ export function getChecklistItems(state: OnboardingState): ChecklistItem[] {
 export function getCompletedCount(state: OnboardingState): number {
   return [
     state.firstEvalDone,
-    state.firstDecisionCreated,
+    state.firstRulebookCreated,
     state.firstTestRun,
     state.firstDeploy,
   ].filter(Boolean).length;

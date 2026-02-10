@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -27,6 +27,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
+  const [redirectTo, setRedirectTo] = useState('/home');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get('redirect');
+    if (redirect) setRedirectTo(redirect);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +52,7 @@ export default function LoginPage() {
       }
 
       toast.success('Successfully signed in!');
-      router.push('/home');
+      router.push(redirectTo);
       router.refresh();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to sign in';

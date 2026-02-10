@@ -4,28 +4,33 @@
 // ============================================
 
 // ============================================
-// DECISION - The central entity
+// RULEBOOK - The central entity
 // ============================================
 
-export interface Decision {
+export interface Rulebook {
   id: string;
   name: string;
   description: string;
-  status: DecisionStatus;
+  status: RulebookStatus;
   activeVersionId: string | null;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
 }
 
-export type DecisionStatus = 'draft' | 'published';
+export type RulebookStatus = 'draft' | 'published';
 
-export interface DecisionWithStats extends Decision {
+export interface RulebookWithStats extends Rulebook {
   failuresLast24h: number;
   lastDeployedAt: string | null;
   lastRunAt: string | null;
   activeEnv: Environment | null;
 }
+
+// Legacy aliases (for incremental migration)
+export type Decision = Rulebook;
+export type DecisionStatus = RulebookStatus;
+export type DecisionWithStats = RulebookWithStats;
 
 // ============================================
 // SCHEMA - Input/Output definition
@@ -33,7 +38,7 @@ export interface DecisionWithStats extends Decision {
 
 export interface Schema {
   id: string;
-  decisionId: string;
+  rulebookId: string;
   fields: SchemaField[];
   outputType: OutputType;
   createdAt: string;
@@ -55,12 +60,12 @@ export interface SchemaField {
 export type FieldType = 'string' | 'number' | 'boolean' | 'enum' | 'date' | 'json' | 'array';
 
 // ============================================
-// RULE - Decision logic
+// RULE - Rulebook logic
 // ============================================
 
 export interface Rule {
   id: string;
-  decisionId: string;
+  rulebookId: string;
   name: string;
   description: string;
   order: number;
@@ -100,12 +105,12 @@ export type ConditionOperator =
   | 'is_not_empty';
 
 // ============================================
-// VERSION - Snapshot of decision
+// VERSION - Snapshot of rulebook
 // ============================================
 
 export interface Version {
   id: string;
-  decisionId: string;
+  rulebookId: string;
   versionNumber: number;
   schemaSnapshot: Schema;
   rulesSnapshot: Rule[];
@@ -123,7 +128,7 @@ export type TestStatus = 'passing' | 'failing' | 'unknown' | 'running';
 
 export interface Deployment {
   id: string;
-  decisionId: string;
+  rulebookId: string;
   environment: Environment;
   activeVersionId: string;
   versionNumber: number;
@@ -141,11 +146,11 @@ export const ENVIRONMENTS: Environment[] = ['draft', 'live'];
 
 export interface Test {
   id: string;
-  decisionId: string;
+  rulebookId: string;
   name: string;
   description: string;
   inputJson: Record<string, unknown>;
-  expectedDecision: RuleResult;
+  expectedVerdict: RuleResult;
   expectedReason?: string;
   lastResult?: TestResult;
   createdAt: string;
@@ -156,7 +161,7 @@ export interface TestResult {
   id: string;
   testId: string;
   passed: boolean;
-  actualDecision: RuleResult;
+  actualVerdict: RuleResult;
   actualReason: string;
   firedRuleId: string | null;
   firedRuleName: string | null;
@@ -180,8 +185,8 @@ export interface ExecutionTraceStep {
 
 export interface Run {
   id: string;
-  decisionId: string;
-  decisionName: string;
+  rulebookId: string;
+  rulebookName: string;
   versionId: string;
   versionNumber: number;
   environment: Environment;
@@ -200,7 +205,7 @@ export interface Run {
 }
 
 export interface RunOutput {
-  decision: RuleResult;
+  verdict: RuleResult;
   reason: string;
   metadata?: Record<string, unknown>;
 }
@@ -226,7 +231,7 @@ export interface CreditTransaction {
   amount: number;
   description: string;
   runId?: string;
-  decisionId?: string;
+  rulebookId?: string;
   createdAt: string;
 }
 
@@ -291,8 +296,8 @@ export const PLANS: PlanDefinition[] = [
     pricePerExtraSeat: 0,
     features: [
       '50 evaluations / month',
-      '3 rulesets',
-      '10 rules per ruleset',
+      '3 rulebooks',
+      '10 rules per rulebook',
       'Community support',
       'Single user',
     ],
@@ -307,7 +312,7 @@ export const PLANS: PlanDefinition[] = [
     pricePerExtraSeat: 5,
     features: [
       '500 evaluations / month',
-      'Unlimited rulesets',
+      'Unlimited rulebooks',
       'Unlimited rules',
       'Version history & deployments',
       'Priority support',
@@ -374,7 +379,7 @@ export interface Webhook {
   createdAt: string;
 }
 
-export type WebhookEvent = 'run.completed' | 'run.failed' | 'decision.published' | 'version.created';
+export type WebhookEvent = 'run.completed' | 'run.failed' | 'rulebook.published' | 'version.created';
 
 // ============================================
 // ACTIVITY & HISTORY
@@ -385,8 +390,8 @@ export interface ActivityEvent {
   type: ActivityEventType;
   actorId: string;
   actorName: string;
-  decisionId?: string;
-  decisionName?: string;
+  rulebookId?: string;
+  rulebookName?: string;
   versionId?: string;
   description: string;
   metadata?: Record<string, unknown>;
@@ -394,9 +399,9 @@ export interface ActivityEvent {
 }
 
 export type ActivityEventType = 
-  | 'decision.created'
-  | 'decision.updated'
-  | 'decision.deleted'
+  | 'rulebook.created'
+  | 'rulebook.updated'
+  | 'rulebook.deleted'
   | 'version.created'
   | 'deployment.promoted'
   | 'test.created'
@@ -409,15 +414,18 @@ export type ActivityEventType =
 // TEMPLATES
 // ============================================
 
-export interface DecisionTemplate {
+export interface RulebookTemplate {
   id: string;
   name: string;
   description: string;
   category: TemplateCategory;
-  schema: Omit<Schema, 'id' | 'decisionId' | 'createdAt' | 'updatedAt'>;
-  rules: Omit<Rule, 'id' | 'decisionId' | 'createdAt' | 'updatedAt'>[];
-  tests: Omit<Test, 'id' | 'decisionId' | 'createdAt' | 'updatedAt' | 'lastResult'>[];
+  schema: Omit<Schema, 'id' | 'rulebookId' | 'createdAt' | 'updatedAt'>;
+  rules: Omit<Rule, 'id' | 'rulebookId' | 'createdAt' | 'updatedAt'>[];
+  tests: Omit<Test, 'id' | 'rulebookId' | 'createdAt' | 'updatedAt' | 'lastResult'>[];
 }
+
+// Legacy alias
+export type DecisionTemplate = RulebookTemplate;
 
 export type TemplateCategory = 'review' | 'fraud' | 'eligibility' | 'routing' | 'approval' | 'custom';
 
@@ -472,10 +480,13 @@ export interface PaginatedResponse<T> {
 // CONSTANTS
 // ============================================
 
-export const DECISION_STATUS_LABELS: Record<DecisionStatus, string> = {
+export const RULEBOOK_STATUS_LABELS: Record<RulebookStatus, string> = {
   draft: 'Draft',
   published: 'Published',
 };
+
+// Legacy alias
+export const DECISION_STATUS_LABELS = RULEBOOK_STATUS_LABELS;
 
 export const ENVIRONMENT_LABELS: Record<Environment, string> = {
   draft: 'Draft',

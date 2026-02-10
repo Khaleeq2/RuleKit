@@ -35,12 +35,12 @@ import { Run, Environment, RunTrigger, ENVIRONMENTS } from '@/app/lib/types';
 import { formatRelativeTime } from '@/app/lib/time-utils';
 
 // ============================================
-// Runs Tab (Decision-specific)
+// Runs Tab (Rulebook-specific)
 // ============================================
 
-export default function DecisionRunsPage() {
+export default function RulebookRunsPage() {
   const params = useParams();
-  const decisionId = params.id as string;
+  const rulebookId = params.id as string;
 
   const [runs, setRuns] = useState<Run[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,14 +52,14 @@ export default function DecisionRunsPage() {
     const loadRuns = async () => {
       try {
         const runsData = await runsRepo.list({
-          decisionId,
+          rulebookId,
           environment: envFilter === 'all' ? undefined : envFilter,
           limit: 100,
         });
         
         let filtered = runsData;
         if (statusFilter !== 'all') {
-          filtered = runsData.filter(r => r.output.decision === statusFilter);
+          filtered = runsData.filter(r => r.output.verdict === statusFilter);
         }
         
         setRuns(filtered);
@@ -71,19 +71,19 @@ export default function DecisionRunsPage() {
     };
 
     loadRuns();
-  }, [decisionId, envFilter, statusFilter]);
+  }, [rulebookId, envFilter, statusFilter]);
 
   const handleRefresh = async () => {
     setIsLoading(true);
     const runsData = await runsRepo.list({
-      decisionId,
+      rulebookId,
       environment: envFilter === 'all' ? undefined : envFilter,
       limit: 100,
     });
     
     let filtered = runsData;
     if (statusFilter !== 'all') {
-      filtered = runsData.filter(r => r.output.decision === statusFilter);
+      filtered = runsData.filter(r => r.output.verdict === statusFilter);
     }
     
     setRuns(filtered);
@@ -93,8 +93,8 @@ export default function DecisionRunsPage() {
   // Stats
   const stats = {
     total: runs.length,
-    passed: runs.filter(r => r.output.decision === 'pass').length,
-    failed: runs.filter(r => r.output.decision === 'fail').length,
+    passed: runs.filter(r => r.output.verdict === 'pass').length,
+    failed: runs.filter(r => r.output.verdict === 'fail').length,
     avgLatency: runs.length > 0 
       ? Math.round(runs.reduce((sum, r) => sum + r.latencyMs, 0) / runs.length)
       : 0,
@@ -102,7 +102,7 @@ export default function DecisionRunsPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1200px] mx-auto px-6 py-8">
+      <div className="max-w-[1400px] mx-auto px-6 py-8">
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-16 rounded-xl bg-[var(--muted)] animate-pulse" />
@@ -113,13 +113,13 @@ export default function DecisionRunsPage() {
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8">
+    <div className="max-w-[1400px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">Runs</h2>
           <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-            Execution history for this decision
+            Execution history for this rulebook
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -137,7 +137,7 @@ export default function DecisionRunsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label="Total runs" value={stats.total} />
         <StatCard label="Passed" value={stats.passed} variant="success" />
         <StatCard label="Failed" value={stats.failed} variant="error" />
@@ -246,7 +246,7 @@ function RunRow({ run }: { run: Run }) {
             <CardContent className="py-3">
               <div className="flex items-center gap-4">
                 {/* Status icon */}
-                {run.output.decision === 'pass' ? (
+                {run.output.verdict === 'pass' ? (
                   <CheckCircle2 className="w-5 h-5 text-[var(--success)] flex-shrink-0" />
                 ) : (
                   <XCircle className="w-5 h-5 text-[var(--destructive)] flex-shrink-0" />

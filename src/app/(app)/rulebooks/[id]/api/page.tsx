@@ -23,8 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { decisionsRepo, schemasRepo } from '@/app/lib/decisions';
-import { Decision, Schema, Environment, ENVIRONMENTS } from '@/app/lib/types';
+import { rulebooksRepo, schemasRepo } from '@/app/lib/rulebooks';
+import { Rulebook, Schema, Environment, ENVIRONMENTS } from '@/app/lib/types';
 import { toast } from 'sonner';
 
 // ============================================
@@ -33,26 +33,26 @@ import { toast } from 'sonner';
 
 export default function ApiPage() {
   const params = useParams();
-  const decisionId = params.id as string;
+  const rulebookId = params.id as string;
 
-  const [decision, setDecision] = useState<Decision | null>(null);
+  const [rulebook, setRulebook] = useState<Rulebook | null>(null);
   const [schema, setSchema] = useState<Schema | null>(null);
   const [selectedEnv, setSelectedEnv] = useState<Environment>('draft');
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
 
-  // Load decision and schema
+  // Load rulebook and schema
   useEffect(() => {
     const loadData = async () => {
-      const [decisionData, schemaData] = await Promise.all([
-        decisionsRepo.getById(decisionId),
-        schemasRepo.getByDecisionId(decisionId),
+      const [rulebookData, schemaData] = await Promise.all([
+        rulebooksRepo.getById(rulebookId),
+        schemasRepo.getByRulebookId(rulebookId),
       ]);
-      setDecision(decisionData);
+      setRulebook(rulebookData);
       setSchema(schemaData);
     };
 
     loadData();
-  }, [decisionId]);
+  }, [rulebookId]);
 
   const handleCopy = async (text: string, snippetId: string) => {
     await navigator.clipboard.writeText(text);
@@ -61,8 +61,8 @@ export default function ApiPage() {
     setTimeout(() => setCopiedSnippet(null), 2000);
   };
 
-  const baseUrl = 'https://api.rulekit.io';
-  const endpoint = `/v1/decisions/${decisionId}/run`;
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://your-app.vercel.app';
+  const endpoint = '/api/evaluate';
   const fullUrl = `${baseUrl}${endpoint}`;
 
   // Generate sample input from schema
@@ -83,7 +83,7 @@ export default function ApiPage() {
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -H "X-Environment: ${selectedEnv}" \\
-  -d '${JSON.stringify(sampleInput, null, 2)}'`,
+  -d '${JSON.stringify({ rulebookId, input: sampleInput }, null, 2)}'`,
 
     javascript: `const response = await fetch("${fullUrl}", {
   method: "POST",
@@ -92,12 +92,12 @@ export default function ApiPage() {
     "Content-Type": "application/json",
     "X-Environment": "${selectedEnv}"
   },
-  body: JSON.stringify(${JSON.stringify(sampleInput, null, 4).split('\n').join('\n    ')})
+  body: JSON.stringify(${JSON.stringify({ rulebookId: 'RULEBOOK_ID', input: sampleInput }, null, 4).split('\n').join('\n    ')})
 });
 
 const result = await response.json();
 console.log(result);
-// { decision: "pass" | "fail", reason: string }`,
+// { result: { verdict: "pass" | "fail", rules: [...] } }`,
 
     python: `import requests
 
@@ -108,18 +108,18 @@ response = requests.post(
         "Content-Type": "application/json",
         "X-Environment": "${selectedEnv}"
     },
-    json=${JSON.stringify(sampleInput, null, 4).split('\n').join('\n    ')}
+    json=${JSON.stringify({ rulebookId: 'RULEBOOK_ID', input: sampleInput }, null, 4).split('\n').join('\n    ')}
 )
 
 result = response.json()
 print(result)
-# {"decision": "pass" | "fail", "reason": "..."}`,
+# {"result": {"verdict": "pass" | "fail", "rules": [...]}}`,
 
     node: `const axios = require('axios');
 
 const response = await axios.post(
   "${fullUrl}",
-  ${JSON.stringify(sampleInput, null, 4).split('\n').join('\n  ')},
+  ${JSON.stringify({ rulebookId: 'RULEBOOK_ID', input: sampleInput }, null, 4).split('\n').join('\n  ')},
   {
     headers: {
       "Authorization": "Bearer YOUR_API_KEY",
@@ -130,17 +130,17 @@ const response = await axios.post(
 );
 
 console.log(response.data);
-// { decision: "pass" | "fail", reason: "..." }`,
+// { result: { verdict: "pass" | "fail", rules: [...] } }`,
   };
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8">
+    <div className="max-w-[1400px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">API</h2>
           <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-            Integrate this decision into your application
+            Integrate this rulebook into your application
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -205,7 +205,7 @@ console.log(response.data);
       </Card>
 
       {/* Request/Response */}
-      <div className="grid grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Request */}
         <Card>
           <CardHeader className="pb-3">
@@ -240,14 +240,14 @@ console.log(response.data);
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Response</CardTitle>
             <CardDescription>
-              Decision result with reason
+              Evaluation result with reason
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="relative">
               <pre className="p-4 rounded-lg bg-[var(--muted)] text-sm font-mono overflow-auto max-h-64">
 {`{
-  "decision": "pass" | "fail",
+  "verdict": "pass" | "fail",
   "reason": "string",
   "metadata": {
     "version": number,
@@ -370,7 +370,7 @@ console.log(response.data);
             <ErrorCodeRow code="400" description="Invalid request body or missing required fields" />
             <ErrorCodeRow code="401" description="Invalid or missing API key" />
             <ErrorCodeRow code="403" description="API key not authorized for this environment" />
-            <ErrorCodeRow code="404" description="Decision not found or not deployed" />
+            <ErrorCodeRow code="404" description="Rulebook not found or not deployed" />
             <ErrorCodeRow code="429" description="Rate limit exceeded" />
             <ErrorCodeRow code="500" description="Internal server error" />
           </div>

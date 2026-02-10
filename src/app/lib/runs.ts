@@ -32,13 +32,13 @@ function notify(key: string) {
 function toRun(row: any): Run {
   return {
     id: row.id,
-    decisionId: row.decision_id,
-    decisionName: row.decision_name,
+    rulebookId: row.rulebook_id,
+    rulebookName: row.rulebook_name,
     versionId: row.version_id,
     versionNumber: row.version_number,
     environment: row.environment,
     input: row.input ?? {},
-    output: row.output ?? { decision: 'fail', reason: '' },
+    output: row.output ?? { verdict: 'fail', reason: '' },
     firedRuleId: row.fired_rule_id,
     firedRuleName: row.fired_rule_name,
     executionTrace: row.execution_trace ?? [],
@@ -58,8 +58,8 @@ function toActivity(row: any): ActivityEvent {
     type: row.type,
     actorId: row.user_id,
     actorName: row.actor_name,
-    decisionId: row.decision_id,
-    decisionName: row.decision_name,
+    rulebookId: row.rulebook_id,
+    rulebookName: row.rulebook_name,
     versionId: row.version_id,
     description: row.description,
     metadata: row.metadata,
@@ -74,7 +74,7 @@ function toActivity(row: any): ActivityEvent {
 
 export const runsRepo = {
   async list(options?: {
-    decisionId?: string;
+    rulebookId?: string;
     environment?: Environment;
     status?: RunStatus;
     trigger?: RunTrigger;
@@ -86,7 +86,7 @@ export const runsRepo = {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (options?.decisionId) query = query.eq('decision_id', options.decisionId);
+    if (options?.rulebookId) query = query.eq('rulebook_id', options.rulebookId);
     if (options?.environment) query = query.eq('environment', options.environment);
     if (options?.status) query = query.eq('status', options.status);
     if (options?.trigger) query = query.eq('trigger', options.trigger);
@@ -111,7 +111,7 @@ export const runsRepo = {
     return data ? toRun(data) : null;
   },
 
-  async getFailures(options?: { decisionId?: string; hours?: number }): Promise<Run[]> {
+  async getFailures(options?: { rulebookId?: string; hours?: number }): Promise<Run[]> {
     const hours = options?.hours || 24;
     const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
@@ -120,17 +120,17 @@ export const runsRepo = {
       .select('*')
       .gte('created_at', cutoff);
 
-    if (options?.decisionId) query = query.eq('decision_id', options.decisionId);
+    if (options?.rulebookId) query = query.eq('rulebook_id', options.rulebookId);
 
     const { data, error } = await query;
     if (error) throw error;
 
     return (data ?? [])
       .map(toRun)
-      .filter((r: Run) => r.output.decision === 'fail');
+      .filter((r: Run) => r.output.verdict === 'fail');
   },
 
-  async getStats(decisionId?: string): Promise<{
+  async getStats(rulebookId?: string): Promise<{
     total: number;
     passed: number;
     failed: number;
@@ -138,10 +138,10 @@ export const runsRepo = {
     avgLatency: number;
     totalCredits: number;
   }> {
-    const runs = await this.list({ decisionId, limit: 1000 });
+    const runs = await this.list({ rulebookId, limit: 1000 });
 
-    const passed = runs.filter(r => r.output.decision === 'pass').length;
-    const failed = runs.filter(r => r.output.decision === 'fail').length;
+    const passed = runs.filter(r => r.output.verdict === 'pass').length;
+    const failed = runs.filter(r => r.output.verdict === 'fail').length;
     const total = runs.length;
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
     const avgLatency = total > 0
@@ -156,8 +156,8 @@ export const runsRepo = {
     const { data, error } = await sb()
       .from('runs')
       .insert({
-        decision_id: input.decisionId,
-        decision_name: input.decisionName,
+        rulebook_id: input.rulebookId,
+        rulebook_name: input.rulebookName,
         version_id: input.versionId,
         version_number: input.versionNumber,
         environment: input.environment,
@@ -181,9 +181,9 @@ export const runsRepo = {
     return toRun(data);
   },
 
-  async executeDecision(
-    decisionId: string,
-    decisionName: string,
+  async executeRulebook(
+    rulebookId: string,
+    rulebookName: string,
     versionId: string,
     versionNumber: number,
     environment: Environment,
@@ -192,22 +192,22 @@ export const runsRepo = {
   ): Promise<Run> {
     const startTime = Date.now();
 
-    // Mock decision logic — in production this would evaluate rules
-    const decision: RuleResult = Math.random() > 0.3 ? 'pass' : 'fail';
-    const reason = decision === 'pass'
-      ? 'Decision passed all rules'
-      : 'Decision failed validation';
+    // Mock evaluation logic — in production this would evaluate rules
+    const verdict: RuleResult = Math.random() > 0.3 ? 'pass' : 'fail';
+    const reason = verdict === 'pass'
+      ? 'Rulebook passed all rules'
+      : 'Rulebook failed validation';
 
     const latencyMs = Date.now() - startTime + Math.floor(Math.random() * 30) + 15;
 
     const run = await this.create({
-      decisionId,
-      decisionName,
+      rulebookId,
+      rulebookName,
       versionId,
       versionNumber,
       environment,
       input,
-      output: { decision, reason },
+      output: { verdict, reason },
       firedRuleId: null,
       firedRuleName: null,
       executionTrace: [],
@@ -222,9 +222,9 @@ export const runsRepo = {
       type: 'run.executed',
       actorId: 'current-user',
       actorName: 'You',
-      decisionId,
-      decisionName,
-      description: `Executed decision (${decision})`,
+      rulebookId,
+      rulebookName,
+      description: `Executed rulebook (${verdict})`,
       metadata: { runId: run.id, environment },
     });
 
@@ -248,7 +248,7 @@ export const runsRepo = {
 export const activityRepo = {
   async list(options?: {
     limit?: number;
-    decisionId?: string;
+    rulebookId?: string;
     type?: ActivityEventType;
   }): Promise<ActivityEvent[]> {
     let query = sb()
@@ -256,7 +256,7 @@ export const activityRepo = {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (options?.decisionId) query = query.eq('decision_id', options.decisionId);
+    if (options?.rulebookId) query = query.eq('rulebook_id', options.rulebookId);
     if (options?.type) query = query.eq('type', options.type);
 
     const limit = options?.limit || 50;
@@ -273,8 +273,8 @@ export const activityRepo = {
       .insert({
         type: input.type,
         actor_name: input.actorName,
-        decision_id: input.decisionId,
-        decision_name: input.decisionName,
+        rulebook_id: input.rulebookId,
+        rulebook_name: input.rulebookName,
         version_id: input.versionId,
         description: input.description,
         metadata: input.metadata,

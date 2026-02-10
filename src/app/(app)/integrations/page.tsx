@@ -7,15 +7,15 @@ export default function IntegrationsPage() {
         Integrations
       </h1>
       <p className="mt-2 max-w-2xl text-sm text-[var(--muted-foreground)]">
-        Integration management is currently decision-centric. Open a decision and
+        Integration management is currently rulebook-centric. Open a rulebook and
         use the API tab for endpoint details and execution examples.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
-          href="/decisions"
+          href="/rulebooks"
           className="inline-flex items-center rounded-lg bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--brand-hover)]"
         >
-          Open decisions
+          Open rulebooks
         </Link>
         <Link
           href="/developers/quickstart"

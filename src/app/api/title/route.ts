@@ -1,6 +1,6 @@
 // ============================================
 // POST /api/title
-// Generates a concise session title from the first user message + decision context.
+// Generates a concise session title from the first user message + rulebook context.
 // Uses a fast, low-token Groq call.
 // ============================================
 
@@ -11,7 +11,7 @@ import { getAuthenticatedUser } from '@/app/lib/api-auth';
 
 interface TitleRequest {
   userMessage: string;
-  decisionName: string;
+  rulebookName: string;
   verdict: 'pass' | 'fail' | null;
 }
 
@@ -43,9 +43,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<TitleResponse
 
     const body: TitleRequest = await req.json();
 
-    if (!body.userMessage || !body.decisionName) {
+    if (!body.userMessage || !body.rulebookName) {
       return NextResponse.json(
-        { success: false, error: 'Missing userMessage or decisionName' },
+        { success: false, error: 'Missing userMessage or rulebookName' },
         { status: 400 }
       );
     }
@@ -68,7 +68,7 @@ Good examples:
         },
         {
           role: 'user',
-          content: `Decision: ${body.decisionName}${verdictHint}\nUser input: ${truncatedInput}`,
+          content: `Rulebook: ${body.rulebookName}${verdictHint}\nUser input: ${truncatedInput}`,
         },
       ],
       temperature: 0.3,

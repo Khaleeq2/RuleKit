@@ -105,7 +105,7 @@ export default function SignupPage() {
             Create your account
           </h1>
           <p className="text-sm text-[var(--muted-foreground)]">
-            Start shipping decisions in minutes
+            Start shipping rules in minutes
           </p>
         </div>
 

@@ -3,7 +3,7 @@ import { buildPublicMetadata } from '../../_lib/public-metadata';
 
 export const metadata: Metadata = buildPublicMetadata({
   title: 'Security',
-  description: 'Security posture and operational safeguards for RuleKit — how we protect your data and decisions.',
+  description: 'Security posture and operational safeguards for RuleKit — how we protect your data and rulebooks.',
   canonicalPath: '/legal/security',
 });
 
@@ -23,7 +23,7 @@ export default function SecurityPage() {
         <section>
           <h2>Our Approach</h2>
           <p>
-            Security is a core part of how RuleKit is built and operated — not an afterthought. We design our systems to protect your data, isolate your decisions, and give you confidence that the platform is safe for production use.
+            Security is a core part of how RuleKit is built and operated — not an afterthought. We design our systems to protect your data, isolate your rulebooks, and give you confidence that the platform is safe for production use.
           </p>
         </section>
 
@@ -50,7 +50,7 @@ export default function SecurityPage() {
         <section>
           <h2>Data Isolation</h2>
           <p>
-            Each user&apos;s rules, decisions, evaluations, and history are logically isolated at the database level. Row-level security (RLS) policies are enforced by Supabase, meaning data isolation is enforced at the database layer — not just the application layer.
+            Each user&apos;s rules, rulebooks, evaluations, and history are logically isolated at the database level. Row-level security (RLS) policies are enforced by Supabase, meaning data isolation is enforced at the database layer — not just the application layer.
           </p>
         </section>
 

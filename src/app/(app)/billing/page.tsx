@@ -34,7 +34,7 @@ export default function BillingPage() {
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [usageStats, setUsageStats] = useState<{
     totalUsed: number;
-    byDecision: { decisionId: string; amount: number }[];
+    byRulebook: { rulebookId: string; amount: number }[];
     dailyUsage: { date: string; amount: number }[];
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -424,7 +424,7 @@ export default function BillingPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[length:var(--font-size-body-sm)] text-[var(--muted-foreground)]">API decision run</span>
+                  <span className="text-[length:var(--font-size-body-sm)] text-[var(--muted-foreground)]">API evaluation run</span>
                   <span className="text-[length:var(--font-size-body-sm)] font-medium text-[var(--foreground)]">1 credit</span>
                 </div>
                 <div className="flex items-center justify-between">

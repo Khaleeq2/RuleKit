@@ -41,7 +41,7 @@ import {
   CollapsibleTrigger,
 } from '@/app/components/ui/collapsible';
 import { testsRepo } from '@/app/lib/tests';
-import { schemasRepo } from '@/app/lib/decisions';
+import { schemasRepo } from '@/app/lib/rulebooks';
 import { Test, TestResult, SchemaField, RuleResult } from '@/app/lib/types';
 import { formatRelativeTime } from '@/app/lib/time-utils';
 import { toast } from 'sonner';
@@ -52,7 +52,7 @@ import { toast } from 'sonner';
 
 export default function TestsPage() {
   const params = useParams();
-  const decisionId = params.id as string;
+  const rulebookId = params.id as string;
 
   const [tests, setTests] = useState<Test[]>([]);
   const [schemaFields, setSchemaFields] = useState<SchemaField[]>([]);
@@ -66,8 +66,8 @@ export default function TestsPage() {
     const loadData = async () => {
       try {
         const [testsData, schemaData] = await Promise.all([
-          testsRepo.listByDecisionId(decisionId),
-          schemasRepo.getByDecisionId(decisionId),
+          testsRepo.listByRulebookId(rulebookId),
+          schemasRepo.getByRulebookId(rulebookId),
         ]);
         setTests(testsData);
         setSchemaFields(schemaData?.fields || []);
@@ -80,7 +80,7 @@ export default function TestsPage() {
     };
 
     loadData();
-  }, [decisionId]);
+  }, [rulebookId]);
 
   const handleAddTest = () => {
     const defaultInput: Record<string, unknown> = {};
@@ -89,11 +89,11 @@ export default function TestsPage() {
     });
 
     const newTest: Partial<Test> = {
-      decisionId,
+      rulebookId,
       name: '',
       description: '',
       inputJson: defaultInput,
-      expectedDecision: 'pass',
+      expectedVerdict: 'pass',
       expectedReason: '',
     };
     setEditingTest(newTest as Test);
@@ -107,11 +107,11 @@ export default function TestsPage() {
 
   const handleCloneTest = (test: Test) => {
     const clone: Partial<Test> = {
-      decisionId,
+      rulebookId,
       name: `${test.name} (copy)`,
       description: test.description,
       inputJson: { ...test.inputJson },
-      expectedDecision: test.expectedDecision,
+      expectedVerdict: test.expectedVerdict,
       expectedReason: test.expectedReason,
     };
     setEditingTest(clone as Test);
@@ -167,10 +167,10 @@ export default function TestsPage() {
   const handleRunAllTests = async () => {
     setIsRunningAll(true);
     try {
-      const { passed, failed, results } = await testsRepo.runSuite(decisionId);
+      const { passed, failed, results } = await testsRepo.runSuite(rulebookId);
       
       // Update tests with results
-      const updatedTests = await testsRepo.listByDecisionId(decisionId);
+      const updatedTests = await testsRepo.listByRulebookId(rulebookId);
       setTests(updatedTests);
       
       toast.success(`Test suite complete: ${passed} passed, ${failed} failed`);
@@ -192,7 +192,7 @@ export default function TestsPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1200px] mx-auto px-6 py-8">
+      <div className="max-w-[1400px] mx-auto px-6 py-8">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 rounded-xl bg-[var(--muted)] animate-pulse" />
@@ -203,13 +203,13 @@ export default function TestsPage() {
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8">
+    <div className="max-w-[1400px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">Tests</h2>
           <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-            Verify your decision logic with test cases
+            Verify your rulebook logic with test cases
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -237,7 +237,7 @@ export default function TestsPage() {
 
       {/* Stats */}
       {tests.length > 0 && (
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatCard label="Total" value={stats.total} />
           <StatCard label="Passing" value={stats.passing} variant="success" />
           <StatCard label="Failing" value={stats.failing} variant="error" />
@@ -250,7 +250,7 @@ export default function TestsPage() {
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <p className="text-[var(--muted-foreground)] mb-4">
-              No test cases yet. Add tests to verify your decision logic.
+              No test cases yet. Add tests to verify your rulebook logic.
             </p>
             <Button onClick={handleAddTest}>
               <Plus className="w-4 h-4" />
@@ -372,7 +372,7 @@ function TestCard({
                   {test.name || 'Untitled test'}
                 </h3>
                 <Badge variant="outline" className="text-xs">
-                  Expects: {test.expectedDecision}
+                  Expects: {test.expectedVerdict}
                 </Badge>
               </div>
               {test.description && (
@@ -382,9 +382,9 @@ function TestCard({
               )}
               {test.lastResult ? (
                 <p className="text-xs mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[var(--muted-foreground)]">Expected: <strong>{test.expectedDecision}</strong></span>
+                  <span className="text-[var(--muted-foreground)]">Expected: <strong>{test.expectedVerdict}</strong></span>
                   <span className="text-[var(--muted-foreground)]">·</span>
-                  <span className="text-[var(--muted-foreground)]">Got: <strong>{test.lastResult.actualDecision}</strong></span>
+                  <span className="text-[var(--muted-foreground)]">Got: <strong>{test.lastResult.actualVerdict}</strong></span>
                   {test.lastResult.passed ? (
                     <CheckCircle2 className="w-3 h-3 text-[var(--success)] inline" />
                   ) : (
@@ -444,7 +444,7 @@ function TestCard({
                 </p>
                 {test.lastResult ? (
                   <div className="p-3 rounded-lg bg-[var(--muted)] text-xs font-mono">
-                    <p><strong>Decision:</strong> {test.lastResult.actualDecision}</p>
+                    <p><strong>Verdict:</strong> {test.lastResult.actualVerdict}</p>
                     <p><strong>Reason:</strong> {test.lastResult.actualReason}</p>
                     {test.lastResult.firedRuleName && (
                       <p><strong>Fired rule:</strong> {test.lastResult.firedRuleName}</p>
@@ -452,7 +452,7 @@ function TestCard({
                   </div>
                 ) : (
                   <div className="p-3 rounded-lg bg-[var(--muted)] text-xs font-mono">
-                    <p><strong>Decision:</strong> {test.expectedDecision}</p>
+                    <p><strong>Verdict:</strong> {test.expectedVerdict}</p>
                     {test.expectedReason && <p><strong>Reason:</strong> {test.expectedReason}</p>}
                   </div>
                 )}
@@ -485,8 +485,8 @@ function TestEditor({
   const [inputJson, setInputJson] = useState(
     JSON.stringify(test?.inputJson || {}, null, 2)
   );
-  const [expectedDecision, setExpectedDecision] = useState<RuleResult>(
-    test?.expectedDecision || 'pass'
+  const [expectedVerdict, setExpectedVerdict] = useState<RuleResult>(
+    test?.expectedVerdict || 'pass'
   );
   const [expectedReason, setExpectedReason] = useState(test?.expectedReason || '');
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -523,7 +523,7 @@ function TestEditor({
       name,
       description,
       inputJson: parsedInput,
-      expectedDecision,
+      expectedVerdict,
       expectedReason,
     };
 
@@ -586,22 +586,22 @@ function TestEditor({
           )}
         </div>
 
-        {/* Expected decision */}
+        {/* Expected verdict */}
         <div className="space-y-2">
-          <Label>Expected decision</Label>
+          <Label>Expected verdict</Label>
           <div className="grid grid-cols-2 gap-3">
             <Button
-              variant={expectedDecision === 'pass' ? 'default' : 'outline'}
-              className={expectedDecision === 'pass' ? 'bg-[var(--success)] hover:bg-[var(--success)]/90' : ''}
-              onClick={() => setExpectedDecision('pass')}
+              variant={expectedVerdict === 'pass' ? 'default' : 'outline'}
+              className={expectedVerdict === 'pass' ? 'bg-[var(--success)] hover:bg-[var(--success)]/90' : ''}
+              onClick={() => setExpectedVerdict('pass')}
             >
               <CheckCircle2 className="w-4 h-4" />
               Pass
             </Button>
             <Button
-              variant={expectedDecision === 'fail' ? 'default' : 'outline'}
-              className={expectedDecision === 'fail' ? 'bg-[var(--destructive)] hover:bg-[var(--destructive)]/90' : ''}
-              onClick={() => setExpectedDecision('fail')}
+              variant={expectedVerdict === 'fail' ? 'default' : 'outline'}
+              className={expectedVerdict === 'fail' ? 'bg-[var(--destructive)] hover:bg-[var(--destructive)]/90' : ''}
+              onClick={() => setExpectedVerdict('fail')}
             >
               <XCircle className="w-4 h-4" />
               Fail

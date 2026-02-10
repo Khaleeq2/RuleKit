@@ -33,7 +33,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/app/components/ui/dialog';
-import { schemasRepo } from '@/app/lib/decisions';
+import { schemasRepo } from '@/app/lib/rulebooks';
 import { Schema, SchemaField, FieldType, FIELD_TYPE_LABELS } from '@/app/lib/types';
 import { toast } from 'sonner';
 
@@ -43,7 +43,7 @@ import { toast } from 'sonner';
 
 export default function SchemaPage() {
   const params = useParams();
-  const decisionId = params.id as string;
+  const rulebookId = params.id as string;
 
   const [schema, setSchema] = useState<Schema | null>(null);
   const [fields, setFields] = useState<SchemaField[]>([]);
@@ -57,7 +57,7 @@ export default function SchemaPage() {
   useEffect(() => {
     const loadSchema = async () => {
       try {
-        const schemaData = await schemasRepo.getByDecisionId(decisionId);
+        const schemaData = await schemasRepo.getByRulebookId(rulebookId);
         setSchema(schemaData);
         setFields(schemaData?.fields || []);
       } catch (error) {
@@ -69,7 +69,7 @@ export default function SchemaPage() {
     };
 
     loadSchema();
-  }, [decisionId]);
+  }, [rulebookId]);
 
   const handleAddField = () => {
     const newField: SchemaField = {
@@ -113,7 +113,7 @@ export default function SchemaPage() {
     setIsSaving(true);
 
     try {
-      await schemasRepo.update(decisionId, { fields });
+      await schemasRepo.update(rulebookId, { fields });
       setHasChanges(false);
       toast.success('Schema saved');
     } catch (error) {
@@ -140,7 +140,7 @@ export default function SchemaPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1200px] mx-auto px-6 py-8">
+      <div className="max-w-[1400px] mx-auto px-6 py-8">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-16 rounded-xl bg-[var(--muted)] animate-pulse" />
@@ -151,13 +151,13 @@ export default function SchemaPage() {
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8">
+    <div className="max-w-[1400px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">Input Schema</h2>
           <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-            Define the data structure your decision expects
+            Define the data structure your rulebook expects
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -277,13 +277,13 @@ export default function SchemaPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Output schema</CardTitle>
           <CardDescription>
-            The structure returned when this decision runs
+            The structure returned when this rulebook runs
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="p-4 rounded-lg bg-[var(--muted)] font-mono text-sm">
             <pre className="text-[var(--foreground)]">{`{
-  "decision": "pass" | "fail",
+  "verdict": "pass" | "fail",
   "reason": string,
   "metadata": object (optional)
 }`}</pre>

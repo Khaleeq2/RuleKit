@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: '%s | RuleKit',
   },
   description:
-    'RuleKit is a self-serve rules engine to define, test, deploy, and audit decision logic.',
+    'RuleKit is a self-serve rules engine to define, test, deploy, and audit rule logic.',
 };
 
 export default function MarketingLayout({

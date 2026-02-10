@@ -29,14 +29,14 @@ export const tourSteps: Tour[] = [
       },
       {
         icon: <>🎯</>,
-        title: 'Pick a ruleset',
+        title: 'Pick a rulebook',
         content: (
           <p className="text-sm text-[var(--muted-foreground)]">
-            Each ruleset has its own set of rules. Select one from this dropdown
+            Each rulebook has its own set of rules. Select one from this dropdown
             to evaluate against.
           </p>
         ),
-        selector: '#tour-decision-selector',
+        selector: '#tour-rulebook-selector',
         side: 'top',
         showControls: true,
         showSkip: true,
@@ -52,7 +52,7 @@ export const tourSteps: Tour[] = [
             Each rule gets its own pass/fail verdict with reasoning.
           </p>
         ),
-        selector: '#tour-nav-decisions',
+        selector: '#tour-nav-rulebooks',
         side: 'right',
         showControls: true,
         showSkip: true,
@@ -65,7 +65,7 @@ export const tourSteps: Tour[] = [
         content: (
           <p className="text-sm text-[var(--muted-foreground)]">
             Review past evaluations, compare results across runs,
-            and spot patterns in your decision outcomes.
+            and spot patterns in your rulebook outcomes.
           </p>
         ),
         selector: '#tour-nav-history',

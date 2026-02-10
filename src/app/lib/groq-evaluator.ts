@@ -297,8 +297,8 @@ function transformEvaluations(
 export async function evaluateRules(
   input: string,
   rules: EvaluatorRule[],
-  decisionId: string,
-  decisionName: string,
+  rulebookId: string,
+  rulebookName: string,
   outputType: string = 'pass_fail'
 ): Promise<EvaluationResult> {
   const startTime = Date.now();
@@ -395,8 +395,8 @@ export async function evaluateRules(
 
   return {
     id: `eval-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-    decision_id: decisionId,
-    decision_name: decisionName,
+    rulebook_id: rulebookId,
+    rulebook_name: rulebookName,
     input,
     verdict: overallVerdict,
     reason: raw.reason,

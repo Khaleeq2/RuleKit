@@ -44,7 +44,7 @@ import { getSupabaseBrowserClient } from '@/app/lib/supabase-browser';
 
 const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: Home, href: '/home' },
-  { id: 'decisions', label: 'Rules', icon: ShieldCheck, href: '/decisions' },
+  { id: 'rulebooks', label: 'Rulebooks', icon: ShieldCheck, href: '/rulebooks' },
   { id: 'history', label: 'History', icon: History, href: '/history' },
 ] as const;
 
@@ -95,7 +95,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const getActiveNavId = () => {
     if (pathname === '/' || pathname === '/home') return 'home';
-    if (pathname.startsWith('/decisions')) return 'decisions';
+    if (pathname.startsWith('/rulebooks')) return 'rulebooks';
     if (pathname.startsWith('/history')) return 'history';
     return 'home';
   };
@@ -182,7 +182,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   const isActive = activeNavId === item.id;
                   const Icon = item.icon;
 
-                  const tourId = item.id === 'decisions' ? 'tour-nav-decisions' : item.id === 'history' ? 'tour-nav-history' : undefined;
+                  const tourId = item.id === 'rulebooks' ? 'tour-nav-rulebooks' : item.id === 'history' ? 'tour-nav-history' : undefined;
 
                   const navLink = (
                     <Link

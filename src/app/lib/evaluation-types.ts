@@ -33,8 +33,8 @@ export interface RuleEvaluation {
 
 export interface EvaluationResult {
   id: string;
-  decision_id: string;
-  decision_name: string;
+  rulebook_id: string;
+  rulebook_name: string;
   input: string;
   verdict: RuleVerdict;
   reason: string;
@@ -91,8 +91,8 @@ export interface EvaluatorRule {
 
 export interface EvaluateRequest {
   input: string;
-  decision_id: string;
-  decision_name: string;
+  rulebook_id: string;
+  rulebook_name: string;
   rules: EvaluatorRule[];
   output_type?: 'pass_fail' | 'pass_flag_fail' | 'risk_level';
 }

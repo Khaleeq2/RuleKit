@@ -11,17 +11,17 @@ export const metadata: Metadata = {
     default: 'RuleKit — Turn human judgment into rules that run themselves',
     template: '%s | RuleKit',
   },
-  description: "Write rules in plain English. Run them on any input. Get instant, explainable decisions — without hardcoding business logic.",
+  description: "Write rules in plain English. Run them on any input. Get instant, explainable verdicts — without hardcoding business logic.",
   openGraph: {
     type: 'website',
     siteName: 'RuleKit',
     title: 'RuleKit — Turn human judgment into rules that run themselves',
-    description: 'Write rules in plain English. Run them on any input. Get instant, explainable decisions — without hardcoding business logic.',
+    description: 'Write rules in plain English. Run them on any input. Get instant, explainable verdicts — without hardcoding business logic.',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'RuleKit — Turn human judgment into rules that run themselves',
-    description: 'Write rules in plain English. Run them on any input. Get instant, explainable decisions.',
+    description: 'Write rules in plain English. Run them on any input. Get instant, explainable verdicts.',
   },
   icons: {
     icon: [

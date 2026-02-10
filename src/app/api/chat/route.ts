@@ -21,7 +21,7 @@ interface ChatMessage {
 interface ChatRequest {
   messages: ChatMessage[];
   context?: {
-    decision_name?: string;
+    rulebook_name?: string;
     last_evaluation?: {
       verdict: string;
       reason: string;
@@ -34,7 +34,7 @@ interface ChatRequest {
   };
 }
 
-const CHAT_SYSTEM_PROMPT = `You are a rules evaluation assistant for RuleKit. You help users understand evaluation results, explore "what-if" scenarios, and make informed decisions.
+const CHAT_SYSTEM_PROMPT = `You are a rules evaluation assistant for RuleKit. You help users understand evaluation results, explore "what-if" scenarios, and reach informed conclusions.
 
 ## Your Role
 - You have access to the context of the most recent rule evaluation.
@@ -58,7 +58,7 @@ function buildContextMessage(context: ChatRequest['context']): string {
   const eval_ = context.last_evaluation;
   const lines = [
     `## Current Evaluation Context`,
-    `**Decision**: ${context.decision_name || 'Unknown'}`,
+    `**Rulebook**: ${context.rulebook_name || 'Unknown'}`,
     `**Overall Verdict**: ${eval_.verdict}`,
     `**Reason**: ${eval_.reason}`,
     '',

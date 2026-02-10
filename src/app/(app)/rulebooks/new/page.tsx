@@ -14,19 +14,19 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Card, CardContent } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
-import { decisionsRepo, schemasRepo } from '@/app/lib/decisions';
-import { DecisionTemplate, TemplateCategory, OutputType, OUTPUT_TYPE_META } from '@/app/lib/types';
+import { rulebooksRepo, schemasRepo } from '@/app/lib/rulebooks';
+import { RulebookTemplate, TemplateCategory, OutputType, OUTPUT_TYPE_META } from '@/app/lib/types';
 import { toast } from 'sonner';
 
 // ============================================
 // Templates
 // ============================================
 
-const TEMPLATES: DecisionTemplate[] = [
+const TEMPLATES: RulebookTemplate[] = [
   {
     id: 'loan-eligibility',
     name: 'Loan Eligibility',
@@ -46,8 +46,8 @@ const TEMPLATES: DecisionTemplate[] = [
       { name: 'Default Pass', description: 'Approve if all checks pass', order: 2, condition: { type: 'simple', field: 'credit_score', operator: 'gte', value: 0 }, result: 'pass', reason: 'Application approved', enabled: true },
     ],
     tests: [
-      { name: 'High credit approved', description: 'Good applicant should pass', inputJson: { credit_score: 750, annual_income: 80000, employment_status: 'employed', loan_amount: 20000 }, expectedDecision: 'pass' },
-      { name: 'Low credit rejected', description: 'Poor credit should fail', inputJson: { credit_score: 580, annual_income: 60000, employment_status: 'employed', loan_amount: 15000 }, expectedDecision: 'fail' },
+      { name: 'High credit approved', description: 'Good applicant should pass', inputJson: { credit_score: 750, annual_income: 80000, employment_status: 'employed', loan_amount: 20000 }, expectedVerdict: 'pass' },
+      { name: 'Low credit rejected', description: 'Poor credit should fail', inputJson: { credit_score: 580, annual_income: 60000, employment_status: 'employed', loan_amount: 15000 }, expectedVerdict: 'fail' },
     ],
   },
   {
@@ -112,23 +112,23 @@ const CATEGORY_ICONS: Record<TemplateCategory, React.ComponentType<{ className?:
 };
 
 // ============================================
-// New Decision Page
+// New Rulebook Page
 // ============================================
 
-export default function NewDecisionPage() {
+export default function NewRulebookPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const showTemplates = searchParams.get('templates') === 'true';
   const initialName = searchParams.get('name') || '';
 
   const [step, setStep] = useState<'choose' | 'details'>('choose');
-  const [selectedTemplate, setSelectedTemplate] = useState<DecisionTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<RulebookTemplate | null>(null);
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState('');
   const [outputType, setOutputType] = useState<OutputType>('pass_fail');
   const [isCreating, setIsCreating] = useState(false);
 
-  const handleSelectTemplate = (template: DecisionTemplate) => {
+  const handleSelectTemplate = (template: RulebookTemplate) => {
     setSelectedTemplate(template);
     setName(template.name);
     setDescription(template.description);
@@ -142,14 +142,14 @@ export default function NewDecisionPage() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      toast.error('Please enter a ruleset name');
+      toast.error('Please enter a rulebook name');
       return;
     }
 
     setIsCreating(true);
 
     try {
-      const decision = await decisionsRepo.create({
+      const rulebook = await rulebooksRepo.create({
         name: name.trim(),
         description: description.trim(),
         status: 'draft',
@@ -159,17 +159,17 @@ export default function NewDecisionPage() {
       // Update schema output type if not default
       if (outputType !== 'pass_fail') {
         try {
-          await schemasRepo.update(decision.id, { outputType });
+          await schemasRepo.update(rulebook.id, { outputType });
         } catch (e) {
           console.error('Failed to update output type:', e);
         }
       }
 
-      toast.success('Ruleset created');
-      router.push(`/decisions/${decision.id}`);
+      toast.success('Rulebook created');
+      router.push(`/rulebooks/${rulebook.id}`);
     } catch (error) {
-      console.error('Failed to create ruleset:', error);
-      const msg = error instanceof Error ? error.message : 'Failed to create ruleset';
+      console.error('Failed to create rulebook:', error);
+      const msg = error instanceof Error ? error.message : 'Failed to create rulebook';
       toast.error(msg);
     } finally {
       setIsCreating(false);
@@ -180,10 +180,11 @@ export default function NewDecisionPage() {
     <div className="min-h-full">
       <div className="max-w-[900px] mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="mb-10">
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
+            className="h-9 px-2 text-[13px] font-medium"
             onClick={() => {
               if (step === 'details') {
                 setStep('choose');
@@ -192,22 +193,24 @@ export default function NewDecisionPage() {
                 setDescription('');
                 setOutputType('pass_fail');
               } else {
-                router.push('/decisions');
+                router.push('/rulebooks');
               }
             }}
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
+            {step === 'details' ? 'Back' : 'Rulebooks'}
           </Button>
-          <div>
+
+          <div className="mt-3">
             <h1 className="text-[22px] font-semibold text-[var(--foreground)] tracking-[-0.01em] leading-tight">
-              {step === 'choose' ? 'Create a ruleset' : 'Ruleset details'}
+              {step === 'choose' ? 'Create a rulebook' : 'Rulebook details'}
             </h1>
             <p className="text-[13px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
               {step === 'choose'
                 ? 'Start from a template or create from scratch'
                 : selectedTemplate
                   ? `Based on ${selectedTemplate.name} template`
-                  : 'Define your ruleset and its output type'}
+                  : 'Define your rulebook and its output type'}
             </p>
           </div>
         </div>
@@ -227,7 +230,7 @@ export default function NewDecisionPage() {
                   <div className="flex-1">
                     <h3 className="font-semibold text-[var(--foreground)]">Start from scratch</h3>
                     <p className="text-sm text-[var(--muted-foreground)]">
-                      Create a blank ruleset and define everything yourself
+                      Create a blank rulebook and define everything yourself
                     </p>
                   </div>
                   <ArrowRight className="w-5 h-5 text-[var(--muted-foreground)]" />
@@ -274,15 +277,9 @@ export default function NewDecisionPage() {
           <div className="space-y-8">
             {/* Form */}
             <Card className="surface-grain">
-              <CardHeader>
-                <CardTitle>Ruleset details</CardTitle>
-                <CardDescription>
-                  Give your ruleset a clear name and description
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="pt-6 space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Ruleset name</Label>
+                  <Label htmlFor="name">Rulebook name</Label>
                   <Input
                     id="name"
                     value={name}
@@ -298,7 +295,7 @@ export default function NewDecisionPage() {
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="What does this ruleset do?"
+                    placeholder="What does this rulebook do?"
                     rows={3}
                   />
                 </div>
@@ -348,10 +345,10 @@ export default function NewDecisionPage() {
             {/* Actions */}
             <div className="flex items-center justify-end gap-3">
               <Button variant="outline" asChild>
-                <Link href="/decisions">Cancel</Link>
+                <Link href="/rulebooks">Cancel</Link>
               </Button>
               <Button onClick={handleCreate} disabled={isCreating || !name.trim()} className="h-10 text-[14px] bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white">
-                {isCreating ? 'Creating...' : 'Create ruleset'}
+                {isCreating ? 'Creating...' : 'Create rulebook'}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>

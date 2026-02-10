@@ -5,7 +5,7 @@ import { buildPublicMetadata } from '../../_lib/public-metadata';
 export const metadata: Metadata = buildPublicMetadata({
   title: 'Developers — API Quickstart',
   description:
-    'Integrate RuleKit decisions into any stack. Send JSON, get a verdict. Full REST API with versioned endpoints.',
+    'Integrate RuleKit rulebooks into any stack. Send JSON, get a verdict. Full REST API with versioned endpoints.',
   canonicalPath: '/developers/quickstart',
 });
 
@@ -13,7 +13,7 @@ const CODE_EXAMPLE = `curl -X POST https://api.rulekit.io/v1/evaluate \\
   -H "Authorization: Bearer rk_live_..." \\
   -H "Content-Type: application/json" \\
   -d '{
-    "decision_id": "d_abc123",
+    "rulebook_id": "rb_abc123",
     "input": {
       "credit_score": 720,
       "annual_income": 85000,
@@ -46,7 +46,7 @@ export default function DevelopersQuickstartPage() {
           One API call. Structured verdict.
         </h1>
         <p className="mt-5 max-w-2xl mx-auto text-base leading-relaxed text-[var(--muted-foreground)]">
-          Every published decision in RuleKit gets a live REST endpoint. Send JSON input, get back a pass/fail verdict with the exact rule that fired, an execution trace, and latency metrics.
+          Every published rulebook in RuleKit gets a live REST endpoint. Send JSON input, get back a pass/fail verdict with the exact rule that fired, an execution trace, and latency metrics.
         </p>
       </section>
 
@@ -91,8 +91,8 @@ export default function DevelopersQuickstartPage() {
           {[
             {
               step: '1',
-              title: 'Create a decision',
-              desc: 'Define your schema and rules in the Decision Studio. Publish when ready.',
+              title: 'Create a rulebook',
+              desc: 'Define your schema and rules in the Rulebook Studio. Publish when ready.',
             },
             {
               step: '2',
@@ -123,7 +123,7 @@ export default function DevelopersQuickstartPage() {
         </h2>
         <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {[
-            { title: 'Versioned endpoints', desc: 'Pin to a specific decision version for deterministic behavior in production.' },
+            { title: 'Versioned endpoints', desc: 'Pin to a specific rulebook version for deterministic behavior in production.' },
             { title: 'Execution traces', desc: 'Every response includes the full rule evaluation order, so you can debug without leaving your terminal.' },
             { title: 'Webhook support', desc: 'Subscribe to run.completed and run.failed events to trigger downstream workflows.' },
             { title: 'Credit metering', desc: 'Each response includes credits_used so you can track consumption programmatically.' },
@@ -145,7 +145,7 @@ export default function DevelopersQuickstartPage() {
           Start building
         </h2>
         <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-md mx-auto">
-          Create your free account, publish a decision, and make your first API call in under 5 minutes.
+          Create your free account, publish a rulebook, and make your first API call in under 5 minutes.
         </p>
         <div className="flex items-center justify-center gap-3">
           <Link

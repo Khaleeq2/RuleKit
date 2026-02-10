@@ -11,7 +11,7 @@ import { FinalCTASection } from './_components/landing/FinalCTASection';
 export const metadata: Metadata = buildPublicMetadata({
   title: 'RuleKit — Turn human judgment into rules that run themselves',
   description:
-    'Write rules in plain English. Run them on any input. Get instant, explainable decisions — without hardcoding business logic.',
+    'Write rules in plain English. Run them on any input. Get instant, explainable verdicts — without hardcoding business logic.',
   canonicalPath: '/',
 });
 
@@ -22,7 +22,7 @@ function JsonLd() {
     name: 'RuleKit',
     url: process.env.NEXT_PUBLIC_SITE_URL || 'https://rulekit.io',
     description:
-      'Write rules in plain English. Run them on any input. Get instant, explainable decisions — without hardcoding business logic.',
+      'Write rules in plain English. Run them on any input. Get instant, explainable verdicts — without hardcoding business logic.',
   };
 
   const appSchema = {
@@ -33,7 +33,7 @@ function JsonLd() {
     operatingSystem: 'Web',
     url: process.env.NEXT_PUBLIC_SITE_URL || 'https://rulekit.io',
     description:
-      'Judgment infrastructure for every team. Define, test, deploy, and audit decision logic.',
+      'Judgment infrastructure for every team. Define, test, deploy, and audit rule logic.',
     offers: {
       '@type': 'Offer',
       price: '0',

@@ -8,7 +8,7 @@ import {
   Schema,
   Rule
 } from './types';
-import { schemasRepo, rulesRepo } from './decisions';
+import { schemasRepo, rulesRepo } from './rulebooks';
 import { getSupabaseBrowserClient } from './supabase-browser';
 
 // ============================================
@@ -34,7 +34,7 @@ function notify(key: string) {
 function toVersion(row: any): Version {
   return {
     id: row.id,
-    decisionId: row.decision_id,
+    rulebookId: row.rulebook_id,
     versionNumber: row.version_number,
     schemaSnapshot: row.schema_snapshot as Schema,
     rulesSnapshot: (row.rules_snapshot ?? []) as Rule[],
@@ -48,7 +48,7 @@ function toVersion(row: any): Version {
 function toDeployment(row: any): Deployment {
   return {
     id: row.id,
-    decisionId: row.decision_id,
+    rulebookId: row.rulebook_id,
     environment: row.environment,
     activeVersionId: row.active_version_id,
     versionNumber: row.version_number,
@@ -63,11 +63,11 @@ function toDeployment(row: any): Deployment {
 // ============================================
 
 export const versionsRepo = {
-  async listByDecisionId(decisionId: string): Promise<Version[]> {
+  async listByRulebookId(rulebookId: string): Promise<Version[]> {
     const { data, error } = await sb()
       .from('versions')
       .select('*')
-      .eq('decision_id', decisionId)
+      .eq('rulebook_id', rulebookId)
       .order('version_number', { ascending: false });
 
     if (error) throw error;
@@ -85,11 +85,11 @@ export const versionsRepo = {
     return data ? toVersion(data) : null;
   },
 
-  async getLatestByDecisionId(decisionId: string): Promise<Version | null> {
+  async getLatestByRulebookId(rulebookId: string): Promise<Version | null> {
     const { data, error } = await sb()
       .from('versions')
       .select('*')
-      .eq('decision_id', decisionId)
+      .eq('rulebook_id', rulebookId)
       .order('version_number', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -98,23 +98,23 @@ export const versionsRepo = {
     return data ? toVersion(data) : null;
   },
 
-  async create(decisionId: string, releaseNotes: string = ''): Promise<Version> {
+  async create(rulebookId: string, releaseNotes: string = ''): Promise<Version> {
     // Get current schema and rules
-    const schema = await schemasRepo.getByDecisionId(decisionId);
-    const rules = await rulesRepo.listByDecisionId(decisionId);
+    const schema = await schemasRepo.getByRulebookId(rulebookId);
+    const rules = await rulesRepo.listByRulebookId(rulebookId);
 
     if (!schema) {
-      throw new Error(`Schema for decision ${decisionId} not found`);
+      throw new Error(`Schema for rulebook ${rulebookId} not found`);
     }
 
     // Get next version number
-    const latest = await this.getLatestByDecisionId(decisionId);
+    const latest = await this.getLatestByRulebookId(rulebookId);
     const nextVersionNumber = latest ? latest.versionNumber + 1 : 1;
 
     const { data, error } = await sb()
       .from('versions')
       .insert({
-        decision_id: decisionId,
+        rulebook_id: rulebookId,
         version_number: nextVersionNumber,
         schema_snapshot: schema as unknown as Record<string, unknown>,
         rules_snapshot: rules as unknown as Record<string, unknown>[],
@@ -170,11 +170,11 @@ export const versionsRepo = {
 // ============================================
 
 export const deploymentsRepo = {
-  async listByDecisionId(decisionId: string): Promise<Deployment[]> {
+  async listByRulebookId(rulebookId: string): Promise<Deployment[]> {
     const { data, error } = await sb()
       .from('deployments')
       .select('*')
-      .eq('decision_id', decisionId)
+      .eq('rulebook_id', rulebookId)
       .order('deployed_at', { ascending: false });
 
     if (error) throw error;
@@ -191,11 +191,11 @@ export const deploymentsRepo = {
     return (data ?? []).map(toDeployment);
   },
 
-  async getByDecisionAndEnv(decisionId: string, environment: Environment): Promise<Deployment | null> {
+  async getByRulebookAndEnv(rulebookId: string, environment: Environment): Promise<Deployment | null> {
     const { data, error } = await sb()
       .from('deployments')
       .select('*')
-      .eq('decision_id', decisionId)
+      .eq('rulebook_id', rulebookId)
       .eq('environment', environment)
       .order('deployed_at', { ascending: false })
       .limit(1)
@@ -205,15 +205,15 @@ export const deploymentsRepo = {
     return data ? toDeployment(data) : null;
   },
 
-  async getActiveDeployments(decisionId: string): Promise<Record<Environment, Deployment | null>> {
-    const deployments = await this.listByDecisionId(decisionId);
+  async getActiveDeployments(rulebookId: string): Promise<Record<Environment, Deployment | null>> {
+    const deployments = await this.listByRulebookId(rulebookId);
     return {
       draft: deployments.find(d => d.environment === 'draft') || null,
       live: deployments.find(d => d.environment === 'live') || null,
     };
   },
 
-  async promote(decisionId: string, versionId: string, environment: Environment): Promise<Deployment> {
+  async promote(rulebookId: string, versionId: string, environment: Environment): Promise<Deployment> {
     // Get the version to get version number
     const version = await versionsRepo.getById(versionId);
     if (!version) {
@@ -225,8 +225,8 @@ export const deploymentsRepo = {
       throw new Error('Cannot make live: tests must be passing');
     }
 
-    // Check if an existing deployment exists for this decision/env
-    const existing = await this.getByDecisionAndEnv(decisionId, environment);
+    // Check if an existing deployment exists for this rulebook/env
+    const existing = await this.getByRulebookAndEnv(rulebookId, environment);
 
     if (existing) {
       // Update existing deployment
@@ -249,7 +249,7 @@ export const deploymentsRepo = {
       const { data, error } = await sb()
         .from('deployments')
         .insert({
-          decision_id: decisionId,
+          rulebook_id: rulebookId,
           environment,
           active_version_id: versionId,
           version_number: version.versionNumber,
@@ -263,8 +263,8 @@ export const deploymentsRepo = {
     }
   },
 
-  async rollback(decisionId: string, environment: Environment, versionId: string): Promise<Deployment> {
-    return this.promote(decisionId, versionId, environment);
+  async rollback(rulebookId: string, environment: Environment, versionId: string): Promise<Deployment> {
+    return this.promote(rulebookId, versionId, environment);
   },
 
   subscribe(callback: () => void): () => void {

@@ -4,7 +4,7 @@ import { ShieldCheck, GitBranch, Zap, FlaskConical, Rocket, BarChart3 } from 'lu
 import { buildPublicMetadata } from '../../_lib/public-metadata';
 
 export const metadata: Metadata = buildPublicMetadata({
-  title: 'Product — Decision Engine for Modern Teams',
+  title: 'Product — Rules Engine for Modern Teams',
   description:
     'Model schemas, define rules, test behavior, deploy versions, and review run history — all from one platform.',
   canonicalPath: '/product/overview',
@@ -13,9 +13,9 @@ export const metadata: Metadata = buildPublicMetadata({
 const CAPABILITIES = [
   {
     icon: ShieldCheck,
-    title: 'Decision Studio',
+    title: 'Rulebook Studio',
     description:
-      'Define input schemas, build ordered rule chains, and configure pass/fail logic — no code required. Every decision is versioned, testable, and deployable.',
+      'Define input schemas, build ordered rule chains, and configure pass/fail logic — no code required. Every rulebook is versioned, testable, and deployable.',
   },
   {
     icon: Zap,
@@ -39,13 +39,13 @@ const CAPABILITIES = [
     icon: Rocket,
     title: 'REST API',
     description:
-      'Every published decision gets a live API endpoint. Send JSON, get a verdict. Integrate into any backend, webhook, or automation pipeline in minutes.',
+      'Every published rulebook gets a live API endpoint. Send JSON, get a verdict. Integrate into any backend, webhook, or automation pipeline in minutes.',
   },
   {
     icon: BarChart3,
     title: 'Run History & Analytics',
     description:
-      'Every evaluation is logged with input, output, fired rule, execution trace, latency, and credit cost. Filter by decision, status, or time range.',
+      'Every evaluation is logged with input, output, fired rule, execution trace, latency, and credit cost. Filter by rulebook, status, or time range.',
   },
 ] as const;
 
@@ -58,10 +58,10 @@ export default function ProductOverviewPage() {
           Product
         </p>
         <h1 className="text-4xl font-semibold tracking-tight text-[var(--foreground)] sm:text-5xl max-w-3xl mx-auto">
-          The decision engine your&nbsp;team actually uses
+          The rules engine your&nbsp;team actually uses
         </h1>
         <p className="mt-5 max-w-2xl mx-auto text-base leading-relaxed text-[var(--muted-foreground)]">
-          RuleKit gives product and ops teams a structured way to define, test, deploy, and monitor business decisions — without waiting on engineering sprints.
+          RuleKit gives product and ops teams a structured way to define, test, deploy, and monitor business rules — without waiting on engineering sprints.
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Link
@@ -82,7 +82,7 @@ export default function ProductOverviewPage() {
       {/* Capabilities grid */}
       <section className="py-16 border-t border-[var(--border)]">
         <h2 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] text-center mb-12">
-          Everything you need to ship decisions with confidence
+          Everything you need to ship rules with confidence
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {CAPABILITIES.map((cap) => (
@@ -107,11 +107,11 @@ export default function ProductOverviewPage() {
           From schema to production in four steps
         </h2>
         <p className="text-sm text-[var(--muted-foreground)] text-center mb-12 max-w-lg mx-auto">
-          No complex setup. No YAML files. Just structured decision logic that deploys in minutes.
+          No complex setup. No YAML files. Just structured rule logic that deploys in minutes.
         </p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { step: '01', title: 'Define Schema', desc: 'Describe the input fields your decision needs — types, constraints, examples.' },
+            { step: '01', title: 'Define Schema', desc: 'Describe the input fields your rulebook needs — types, constraints, examples.' },
             { step: '02', title: 'Write Rules', desc: 'Add ordered rules with conditions, outcomes, and reasons. Enable or disable individually.' },
             { step: '03', title: 'Test & Version', desc: 'Run test suites, review traces, then snapshot into an immutable version.' },
             { step: '04', title: 'Deploy & Monitor', desc: 'Promote to live, call via API, and watch every evaluation in real time.' },
@@ -128,7 +128,7 @@ export default function ProductOverviewPage() {
       {/* CTA */}
       <section className="py-16 border-t border-[var(--border)] text-center">
         <h2 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] mb-3">
-          Ready to take control of your decisions?
+          Ready to take control of your rules?
         </h2>
         <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-md mx-auto">
           Start with 50 free evaluations per month. No credit card required.

@@ -6,7 +6,7 @@ import { buildPublicMetadata } from '../../_lib/public-metadata';
 export const metadata: Metadata = buildPublicMetadata({
   title: 'Documentation — RuleKit',
   description:
-    'Learn how to build, test, deploy, and integrate decisions with RuleKit. Guides, API reference, and examples.',
+    'Learn how to build, test, deploy, and integrate rulebooks with RuleKit. Guides, API reference, and examples.',
   canonicalPath: '/resources/docs',
 });
 
@@ -14,7 +14,7 @@ const DOC_SECTIONS = [
   {
     icon: BookOpen,
     title: 'Getting Started',
-    description: 'Create your account, build your first decision, and run your first evaluation in under 5 minutes.',
+    description: 'Create your account, build your first rulebook, and run your first evaluation in under 5 minutes.',
     links: [
       { label: 'Quickstart guide', href: '/developers/quickstart' },
       { label: 'Core concepts', href: '/product/how-it-works' },
@@ -22,7 +22,7 @@ const DOC_SECTIONS = [
   },
   {
     icon: Code2,
-    title: 'Decision Studio',
+    title: 'Rulebook Studio',
     description: 'Define input schemas with typed fields, build ordered rule chains, and configure pass/fail outcomes.',
     links: [
       { label: 'Schema reference', href: '/product/decision-studio' },
@@ -93,7 +93,7 @@ export default function ResourcesDocsPage() {
           Documentation
         </h1>
         <p className="mt-5 max-w-2xl mx-auto text-base leading-relaxed text-[var(--muted-foreground)]">
-          Everything you need to build, test, deploy, and integrate business decisions with RuleKit.
+          Everything you need to build, test, deploy, and integrate business rules with RuleKit.
         </p>
       </section>
 

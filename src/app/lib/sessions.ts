@@ -20,8 +20,8 @@ export interface SessionMessage {
 export interface Session {
   id: string;
   title: string;
-  decisionId: string;
-  decisionName: string;
+  rulebookId: string;
+  rulebookName: string;
   verdict: string | null;
   messageCount: number;
   messages: SessionMessage[];
@@ -40,8 +40,8 @@ function toSession(row: any): Session {
   return {
     id: row.id,
     title: row.title,
-    decisionId: row.decision_id,
-    decisionName: row.decision_name,
+    rulebookId: row.rulebook_id,
+    rulebookName: row.rulebook_name,
     verdict: row.verdict,
     messageCount: row.message_count,
     messages: row.messages ?? [],
@@ -117,16 +117,16 @@ export const sessionsRepo = {
   },
 
   async create(
-    decisionId: string,
-    decisionName: string,
+    rulebookId: string,
+    rulebookName: string,
     messages: SessionMessage[]
   ): Promise<Session> {
     const { data, error } = await sb()
       .from('sessions')
       .insert({
         title: deriveTitle(messages),
-        decision_id: decisionId,
-        decision_name: decisionName,
+        rulebook_id: rulebookId,
+        rulebook_name: rulebookName,
         verdict: deriveVerdict(messages),
         message_count: messages.length,
         messages,

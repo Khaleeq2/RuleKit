@@ -94,7 +94,7 @@ export default async function OGImage() {
             maxWidth: '640px',
           }}
         >
-          Write rules in plain English. Run them on any input. Get instant, explainable decisions.
+          Write rules in plain English. Run them on any input. Get instant, explainable verdicts.
         </div>
 
         {/* Bottom bar — feature pills */}

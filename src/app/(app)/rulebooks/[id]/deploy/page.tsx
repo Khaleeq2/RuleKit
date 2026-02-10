@@ -49,7 +49,7 @@ import { toast } from 'sonner';
 
 export default function DeployPage() {
   const params = useParams();
-  const decisionId = params.id as string;
+  const rulebookId = params.id as string;
 
   const [versions, setVersions] = useState<Version[]>([]);
   const [deployments, setDeployments] = useState<Record<Environment, Deployment | null>>({
@@ -67,8 +67,8 @@ export default function DeployPage() {
     const loadData = async () => {
       try {
         const [versionsData, deploymentsData] = await Promise.all([
-          versionsRepo.listByDecisionId(decisionId),
-          deploymentsRepo.getActiveDeployments(decisionId),
+          versionsRepo.listByRulebookId(rulebookId),
+          deploymentsRepo.getActiveDeployments(rulebookId),
         ]);
         setVersions(versionsData);
         setDeployments(deploymentsData);
@@ -81,11 +81,11 @@ export default function DeployPage() {
     };
 
     loadData();
-  }, [decisionId]);
+  }, [rulebookId]);
 
   const handleCreateVersion = async (releaseNotes: string) => {
     try {
-      const newVersion = await versionsRepo.create(decisionId, releaseNotes);
+      const newVersion = await versionsRepo.create(rulebookId, releaseNotes);
       setVersions([newVersion, ...versions]);
       setCreateVersionOpen(false);
       toast.success(`Version ${newVersion.versionNumber} created`);
@@ -106,7 +106,7 @@ export default function DeployPage() {
         }
       }
 
-      const deployment = await deploymentsRepo.promote(decisionId, versionId, environment);
+      const deployment = await deploymentsRepo.promote(rulebookId, versionId, environment);
       setDeployments({ ...deployments, [environment]: deployment });
       setPromoteOpen(false);
       setSelectedVersion(null);
@@ -119,7 +119,7 @@ export default function DeployPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1200px] mx-auto px-6 py-8">
+      <div className="max-w-[1400px] mx-auto px-6 py-8">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 rounded-xl bg-[var(--muted)] animate-pulse" />
@@ -130,7 +130,7 @@ export default function DeployPage() {
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8">
+    <div className="max-w-[1400px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -159,7 +159,7 @@ export default function DeployPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {ENVIRONMENTS.map((env) => {
               const deployment = deployments[env];
               return (
@@ -208,7 +208,7 @@ export default function DeployPage() {
                 Version History
               </CardTitle>
               <CardDescription>
-                All versions of this decision
+                All versions of this rulebook
               </CardDescription>
             </div>
           </div>
@@ -217,7 +217,7 @@ export default function DeployPage() {
           {versions.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-[var(--muted-foreground)] mb-4">
-                No versions created yet. Create a version to deploy your decision.
+                No versions created yet. Create a version to deploy your rulebook.
               </p>
               <Button onClick={() => setCreateVersionOpen(true)}>
                 <Plus className="w-4 h-4" />

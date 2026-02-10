@@ -34,9 +34,9 @@ import {
   CollapsibleTrigger,
 } from '@/app/components/ui/collapsible';
 import { runsRepo } from '@/app/lib/runs';
-import { decisionsRepo } from '@/app/lib/decisions';
+import { rulebooksRepo } from '@/app/lib/rulebooks';
 import { sessionsRepo, type Session } from '@/app/lib/sessions';
-import { Run, Decision, Environment, RunTrigger, ENVIRONMENTS } from '@/app/lib/types';
+import { Run, Rulebook, Environment, RunTrigger, ENVIRONMENTS } from '@/app/lib/types';
 import { formatRelativeTime } from '@/app/lib/time-utils';
 
 // ============================================
@@ -49,26 +49,26 @@ export default function HistoryPage() {
   const [activeTab, setActiveTab] = useState<HistoryTab>('sessions');
   const [runs, setRuns] = useState<Run[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [rulebooks, setRulebooks] = useState<Rulebook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [decisionFilter, setDecisionFilter] = useState<string>('all');
+  const [rulebookFilter, setRulebookFilter] = useState<string>('all');
   const [envFilter, setEnvFilter] = useState<'all' | Environment>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pass' | 'fail'>('all');
 
-  // Load runs, sessions, and decisions
+  // Load runs, sessions, and rulebooks
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [runsData, sessionsData, decisionsData] = await Promise.all([
+        const [runsData, sessionsData, rulebooksData] = await Promise.all([
           runsRepo.list({ limit: 200 }),
           sessionsRepo.list(),
-          decisionsRepo.list(),
+          rulebooksRepo.list(),
         ]);
         setRuns(runsData);
         setSessions(sessionsData);
-        setDecisions(decisionsData);
+        setRulebooks(rulebooksData);
       } catch (error) {
         console.error('Failed to load data:', error);
         setLoadError('Failed to load history. Check your connection and try again.');
@@ -80,15 +80,25 @@ export default function HistoryPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = sessionsRepo.subscribe(() => {
+      sessionsRepo
+        .list()
+        .then(setSessions)
+        .catch(() => {});
+    });
+    return unsubscribe;
+  }, []);
+
   // Apply filters
   const filteredRuns = runs.filter((run) => {
-    if (decisionFilter !== 'all' && run.decisionId !== decisionFilter) return false;
+    if (rulebookFilter !== 'all' && run.rulebookId !== rulebookFilter) return false;
     if (envFilter !== 'all' && run.environment !== envFilter) return false;
-    if (statusFilter !== 'all' && run.output.decision !== statusFilter) return false;
+    if (statusFilter !== 'all' && run.output.verdict !== statusFilter) return false;
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       if (
-        !run.decisionName.toLowerCase().includes(query) &&
+        !run.rulebookName.toLowerCase().includes(query) &&
         !run.output.reason.toLowerCase().includes(query) &&
         !run.id.toLowerCase().includes(query)
       ) {
@@ -111,7 +121,7 @@ export default function HistoryPage() {
 
   // Filter sessions
   const filteredSessions = sessions.filter((s) => {
-    if (decisionFilter !== 'all' && s.decisionId !== decisionFilter) return false;
+    if (rulebookFilter !== 'all' && s.rulebookId !== rulebookFilter) return false;
     if (statusFilter !== 'all') {
       if (statusFilter === 'pass' && s.verdict !== 'pass') return false;
       if (statusFilter === 'fail' && s.verdict !== 'fail') return false;
@@ -120,7 +130,7 @@ export default function HistoryPage() {
       const query = searchQuery.toLowerCase();
       if (
         !s.title.toLowerCase().includes(query) &&
-        !s.decisionName.toLowerCase().includes(query)
+        !s.rulebookName.toLowerCase().includes(query)
       ) {
         return false;
       }
@@ -131,8 +141,8 @@ export default function HistoryPage() {
   // Stats — runs
   const runStats = {
     total: filteredRuns.length,
-    passed: filteredRuns.filter(r => r.output.decision === 'pass').length,
-    failed: filteredRuns.filter(r => r.output.decision === 'fail').length,
+    passed: filteredRuns.filter(r => r.output.verdict === 'pass').length,
+    failed: filteredRuns.filter(r => r.output.verdict === 'fail').length,
     avgLatency: filteredRuns.length > 0
       ? Math.round(filteredRuns.reduce((sum, r) => sum + r.latencyMs, 0) / filteredRuns.length)
       : 0,
@@ -249,14 +259,14 @@ export default function HistoryPage() {
               className="pl-10 h-11 bg-[var(--card)] border-[var(--border)] shadow-[0_1px_2px_0_rgb(0_0_0/0.05)] focus:shadow-[0_4px_12px_-4px_rgb(0_0_0/0.1)] transition-all"
             />
           </div>
-          <Select value={decisionFilter} onValueChange={setDecisionFilter}>
+          <Select value={rulebookFilter} onValueChange={setRulebookFilter}>
             <SelectTrigger className="w-full md:w-[240px] h-11 bg-[var(--card)] border-[var(--border)] shadow-[0_1px_2px_0_rgb(0_0_0/0.05)]">
-              <SelectValue placeholder="All decisions" />
+              <SelectValue placeholder="All rulebooks" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All rules</SelectItem>
-              {decisions.map((d) => (
-                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              <SelectItem value="all">All rulebooks</SelectItem>
+              {rulebooks.map((rb) => (
+                <SelectItem key={rb.id} value={rb.id}>{rb.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -457,7 +467,7 @@ function RunRow({ run, isEven }: { run: Run; isEven: boolean }) {
         <CollapsibleTrigger asChild>
           <button className="w-full text-left hover:bg-[var(--muted)]/60 transition-colors">
             <div className="grid grid-cols-1 md:grid-cols-[24px_120px_1fr_92px_80px_90px_80px_24px] gap-4 items-center px-4 py-4">
-              {run.output.decision === 'pass' ? (
+              {run.output.verdict === 'pass' ? (
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               ) : (
                 <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -470,11 +480,11 @@ function RunRow({ run, isEven }: { run: Run; isEven: boolean }) {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <Link
-                    href={`/decisions/${run.decisionId}`}
+                    href={`/rulebooks/${run.rulebookId}`}
                     className="text-[length:var(--font-size-body)] font-medium text-[var(--foreground)] hover:underline truncate"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {run.decisionName}
+                    {run.rulebookName}
                   </Link>
                   <span className="hidden md:inline text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] font-mono">v{run.versionNumber}</span>
                 </div>
@@ -499,7 +509,7 @@ function RunRow({ run, isEven }: { run: Run; isEven: boolean }) {
               </div>
 
               <div className="hidden md:block">
-                {run.output.decision === 'pass' ? (
+                {run.output.verdict === 'pass' ? (
                   <Badge className="rounded-full bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0.5 font-medium dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
                     Pass
@@ -595,7 +605,7 @@ function SessionRow({ session, isEven }: { session: Session; isEven: boolean }) 
         )}
       </div>
 
-      {/* Title + verdict badge + decision + reason */}
+      {/* Title + verdict badge + rulebook + reason */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-[var(--foreground)] truncate">
@@ -614,7 +624,7 @@ function SessionRow({ session, isEven }: { session: Session; isEven: boolean }) 
           )}
         </div>
         <p className="text-xs text-[var(--muted-foreground)] mt-0.5 truncate">
-          {session.decisionName}
+          {session.rulebookName}
           <span className="mx-1.5 text-[var(--border)]">&middot;</span>
           {session.messageCount} message{session.messageCount !== 1 ? 's' : ''}
           {reason && (

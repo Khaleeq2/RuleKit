@@ -3,7 +3,7 @@ import { buildPublicMetadata } from '../../_lib/public-metadata';
 
 export const metadata: Metadata = buildPublicMetadata({
   title: 'Terms of Service',
-  description: 'Terms of Service for using RuleKit — the rules engine for teams that need testable, explainable decisions.',
+  description: 'Terms of Service for using RuleKit — the rules engine for teams that need testable, explainable verdicts.',
   canonicalPath: '/legal/terms',
 });
 

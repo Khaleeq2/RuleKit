@@ -4,9 +4,9 @@ import { Landmark, ShieldAlert, Route, MessageSquareWarning } from 'lucide-react
 import { buildPublicMetadata } from '../_lib/public-metadata';
 
 export const metadata: Metadata = buildPublicMetadata({
-  title: 'Solutions — Decision Logic for Every Use Case',
+  title: 'Solutions — Rule Logic for Every Use Case',
   description:
-    'Apply RuleKit to eligibility, fraud screening, routing, moderation, and any workflow where structured decisions matter.',
+    'Apply RuleKit to eligibility, fraud screening, routing, moderation, and any workflow where structured rules matter.',
   canonicalPath: '/solutions',
 });
 
@@ -31,7 +31,7 @@ const USE_CASES = [
     icon: Route,
     title: 'Support & Lead Routing',
     description:
-      'Route tickets, leads, or tasks to the right team based on urgency, segment, region, or product line. Rules evaluate top-to-bottom; first match wins.',
+      'Route tickets, leads, or tasks to the right team based on urgency, segment, region, or product line. All rules are evaluated and combined into a single result.',
     example: 'Plan = enterprise AND region = EMEA → Route to EMEA CSM',
     href: '/solutions/routing',
   },
@@ -54,7 +54,7 @@ export default function SolutionsPage() {
           Solutions
         </p>
         <h1 className="text-4xl font-semibold tracking-tight text-[var(--foreground)] sm:text-5xl max-w-3xl mx-auto">
-          Structured decisions for every domain
+          Structured rules for every domain
         </h1>
         <p className="mt-5 max-w-2xl mx-auto text-base leading-relaxed text-[var(--muted-foreground)]">
           Whether you&apos;re approving loans, screening transactions, routing support tickets, or enforcing content policies — RuleKit gives you testable, explainable logic that your whole team can own.
@@ -123,7 +123,7 @@ export default function SolutionsPage() {
       {/* CTA */}
       <section className="py-16 border-t border-[var(--border)] text-center">
         <h2 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] mb-3">
-          Build your first decision in minutes
+          Build your first rulebook in minutes
         </h2>
         <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-md mx-auto">
           50 free evaluations per month. No credit card required.

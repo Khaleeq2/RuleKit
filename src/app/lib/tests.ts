@@ -30,11 +30,11 @@ function notify(key: string) {
 function toTest(row: any): Test {
   return {
     id: row.id,
-    decisionId: row.decision_id,
+    rulebookId: row.rulebook_id,
     name: row.name,
     description: row.description ?? '',
     inputJson: row.input_json ?? {},
-    expectedDecision: row.expected_decision as RuleResult,
+    expectedVerdict: row.expected_verdict as RuleResult,
     expectedReason: row.expected_reason ?? undefined,
     lastResult: row.last_result as TestResult | undefined,
     createdAt: row.created_at,
@@ -48,11 +48,11 @@ function toTest(row: any): Test {
 // ============================================
 
 export const testsRepo = {
-  async listByDecisionId(decisionId: string): Promise<Test[]> {
+  async listByRulebookId(rulebookId: string): Promise<Test[]> {
     const { data, error } = await sb()
       .from('tests')
       .select('*')
-      .eq('decision_id', decisionId)
+      .eq('rulebook_id', rulebookId)
       .order('updated_at', { ascending: false });
 
     if (error) throw error;
@@ -74,11 +74,11 @@ export const testsRepo = {
     const { data, error } = await sb()
       .from('tests')
       .insert({
-        decision_id: input.decisionId,
+        rulebook_id: input.rulebookId,
         name: input.name,
         description: input.description,
         input_json: input.inputJson,
-        expected_decision: input.expectedDecision,
+        expected_verdict: input.expectedVerdict,
         expected_reason: input.expectedReason ?? null,
       })
       .select()
@@ -89,12 +89,12 @@ export const testsRepo = {
     return toTest(data);
   },
 
-  async update(id: string, updates: Partial<Omit<Test, 'id' | 'decisionId' | 'createdAt'>>): Promise<Test> {
+  async update(id: string, updates: Partial<Omit<Test, 'id' | 'rulebookId' | 'createdAt'>>): Promise<Test> {
     const dbUpdates: Record<string, unknown> = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.inputJson !== undefined) dbUpdates.input_json = updates.inputJson;
-    if (updates.expectedDecision !== undefined) dbUpdates.expected_decision = updates.expectedDecision;
+    if (updates.expectedVerdict !== undefined) dbUpdates.expected_verdict = updates.expectedVerdict;
     if (updates.expectedReason !== undefined) dbUpdates.expected_reason = updates.expectedReason;
     if (updates.lastResult !== undefined) dbUpdates.last_result = updates.lastResult;
 
@@ -127,11 +127,11 @@ export const testsRepo = {
     }
 
     return this.create({
-      decisionId: original.decisionId,
+      rulebookId: original.rulebookId,
       name: `${original.name} (copy)`,
       description: original.description,
       inputJson: { ...original.inputJson },
-      expectedDecision: original.expectedDecision,
+      expectedVerdict: original.expectedVerdict,
       expectedReason: original.expectedReason,
     });
   },
@@ -146,14 +146,14 @@ export const testsRepo = {
       throw new Error(`Test with id ${id} not found`);
     }
 
-    // Fetch decision info and rules for real evaluation
-    const { decisionsRepo, rulesRepo } = await import('./decisions');
-    const decision = await decisionsRepo.getById(test.decisionId);
-    if (!decision) {
-      throw new Error('Decision not found for this test');
+    // Fetch rulebook info and rules for real evaluation
+    const { rulebooksRepo, rulesRepo } = await import('./rulebooks');
+    const rulebook = await rulebooksRepo.getById(test.rulebookId);
+    if (!rulebook) {
+      throw new Error('Rulebook not found for this test');
     }
 
-    const rules = await rulesRepo.listByDecisionId(test.decisionId);
+    const rules = await rulesRepo.listByRulebookId(test.rulebookId);
     const enabledRules = rules.filter(r => r.enabled);
 
     if (enabledRules.length === 0) {
@@ -172,8 +172,8 @@ export const testsRepo = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         input: inputStr,
-        decision_id: test.decisionId,
-        decision_name: decision.name,
+        rulebook_id: test.rulebookId,
+        rulebook_name: rulebook.name,
         rules: enabledRules.map(r => ({
           id: r.id,
           name: r.name,
@@ -186,18 +186,18 @@ export const testsRepo = {
     const latencyMs = Math.round(performance.now() - startMs);
     const data = await res.json();
 
-    let actualDecision: RuleResult = 'fail';
+    let actualVerdict: RuleResult = 'fail';
     let actualReason = 'Evaluation failed';
     let firedRuleId: string | null = null;
     let firedRuleName: string | null = null;
 
     if (data.success && data.result) {
-      actualDecision = data.result.verdict as RuleResult;
+      actualVerdict = data.result.verdict as RuleResult;
       actualReason = data.result.reason || '';
 
       // Find the first failing rule (or first rule that determined the outcome)
       const firedRule = data.result.evaluations?.find(
-        (e: { verdict: string }) => e.verdict === actualDecision
+        (e: { verdict: string }) => e.verdict === actualVerdict
       );
       if (firedRule) {
         firedRuleId = firedRule.rule_id;
@@ -207,13 +207,13 @@ export const testsRepo = {
       actualReason = data.error;
     }
 
-    const passed = actualDecision === test.expectedDecision;
+    const passed = actualVerdict === test.expectedVerdict;
 
     const result: TestResult = {
       id: `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`,
       testId: id,
       passed,
-      actualDecision,
+      actualVerdict,
       actualReason,
       firedRuleId,
       firedRuleName,
@@ -229,8 +229,8 @@ export const testsRepo = {
     return result;
   },
 
-  async runSuite(decisionId: string): Promise<{ passed: number; failed: number; results: TestResult[] }> {
-    const tests = await this.listByDecisionId(decisionId);
+  async runSuite(rulebookId: string): Promise<{ passed: number; failed: number; results: TestResult[] }> {
+    const tests = await this.listByRulebookId(rulebookId);
     const results: TestResult[] = [];
     let passed = 0;
     let failed = 0;
@@ -248,8 +248,8 @@ export const testsRepo = {
     return { passed, failed, results };
   },
 
-  async getTestStats(decisionId: string): Promise<{ total: number; passing: number; failing: number; noResult: number }> {
-    const tests = await this.listByDecisionId(decisionId);
+  async getTestStats(rulebookId: string): Promise<{ total: number; passing: number; failing: number; noResult: number }> {
+    const tests = await this.listByRulebookId(rulebookId);
 
     let passing = 0;
     let failing = 0;

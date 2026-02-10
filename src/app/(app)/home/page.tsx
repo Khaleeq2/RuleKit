@@ -23,8 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RuleResultCard, EvaluationSkeleton } from '@/app/components/RuleResultCard';
 import { ComparisonCard } from '@/app/components/ComparisonCard';
 import MarkdownContent from '@/app/components/MarkdownContent';
-import { decisionsRepo, rulesRepo, schemasRepo } from '@/app/lib/decisions';
-import { DecisionWithStats } from '@/app/lib/types';
+import { rulebooksRepo, rulesRepo, schemasRepo } from '@/app/lib/rulebooks';
+import { RulebookWithStats } from '@/app/lib/types';
 import type { EvaluateResponse, EvaluationResult } from '@/app/lib/evaluation-types';
 import { sessionsRepo, type Session, type SessionMessage } from '@/app/lib/sessions';
 import { formatRelativeTime } from '@/app/lib/time-utils';
@@ -45,7 +45,7 @@ interface RuleCheck {
 
 interface ExecutionResult {
   id: string;
-  decisionName: string;
+  rulebookName: string;
   input: string;
   verdict: string;
   reason: string;
@@ -65,15 +65,15 @@ interface Message {
   isStreaming?: boolean;
 }
 
-// Default prompt suggestions — shown regardless of which decision is selected
+// Default prompt suggestions — shown regardless of which rulebook is selected
 interface PromptSuggestion { title: string; content: string; }
 const DEFAULT_SUGGESTIONS: PromptSuggestion[] = [
   { title: 'Paste your data', content: 'Paste your input data here to check against the selected rules' },
   { title: 'Try a JSON payload', content: '{ "name": "Jane Doe", "email": "jane@example.com", "amount": 25000 }' },
-  { title: 'Ask a question', content: 'What rules are active for this decision?' },
+  { title: 'Ask a question', content: 'What rules are active for this rulebook?' },
 ];
 
-// Onboarding-specific suggestions for the seeded Loan Eligibility decision
+// Onboarding-specific suggestions for the seeded Loan Eligibility rulebook
 const ONBOARDING_SUGGESTIONS: PromptSuggestion[] = [
   { title: 'Try a passing case', content: 'John Smith, 28 years old, annual income $85,000, credit score 740' },
   { title: 'Try a failing case', content: 'Sarah, age 17, income $20,000, credit score 580' },
@@ -82,8 +82,8 @@ const ONBOARDING_SUGGESTIONS: PromptSuggestion[] = [
 
 export default function HomePage() {
   const { startNextStep } = useNextStep();
-  const [decisions, setDecisions] = useState<DecisionWithStats[]>([]);
-  const [selectedDecision, setSelectedDecision] = useState<string>('');
+  const [rulebooks, setRulebooks] = useState<RulebookWithStats[]>([]);
+  const [selectedRulebook, setSelectedRulebook] = useState<string>('');
   const [runInput, setRunInput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -105,6 +105,7 @@ export default function HomePage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const busyLockRef = useRef(false);
   const titleGeneratedRef = useRef(false);
+  const titleGenerationInFlightRef = useRef(false);
   const forceEvaluateRef = useRef(false);
 
   const CONTENT_MAX_W = 800;
@@ -129,7 +130,7 @@ export default function HomePage() {
         const ev = sm.evaluation;
         msg.execution = {
           id: ev.id,
-          decisionName: session.decisionName,
+          rulebookName: session.rulebookName,
           input: ev.input || '',
           verdict: ev.verdict,
           reason: ev.reason,
@@ -150,15 +151,16 @@ export default function HomePage() {
       return msg;
     });
 
-    setSelectedDecision(session.decisionId);
+    setSelectedRulebook(session.rulebookId);
     setSessionId(session.id);
     setMessages(loadedMessages);
     titleGeneratedRef.current = true; // Existing session already has a title
+    titleGenerationInFlightRef.current = false;
     // Move focus to composer after session loads
     setTimeout(() => textareaRef.current?.focus(), 100);
   };
 
-  // Load decisions + recent sessions + onboarding initialization
+  // Load rulebooks + recent sessions + onboarding initialization
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -166,15 +168,15 @@ export default function HomePage() {
         const obState = await getOnboardingState();
         setOnboarding(obState);
 
-        const [decisionsData, sessionsData] = await Promise.all([
-          decisionsRepo.listWithStats(),
+        const [rulebooksData, sessionsData] = await Promise.all([
+          rulebooksRepo.listWithStats(),
           sessionsRepo.list(),
         ]);
 
-        setDecisions(decisionsData);
+        setRulebooks(rulebooksData);
         setRecentSessions(sessionsData.slice(0, 3));
-        if (decisionsData.length > 0 && !selectedDecision) {
-          setSelectedDecision(decisionsData[0].id);
+        if (rulebooksData.length > 0 && !selectedRulebook) {
+          setSelectedRulebook(rulebooksData[0].id);
         }
 
         // Show welcome modal for first-time users
@@ -202,7 +204,7 @@ export default function HomePage() {
           const res = await fetch('/api/title', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userMessage: firstUser, decisionName: s.decisionName, verdict }),
+            body: JSON.stringify({ userMessage: firstUser, rulebookName: s.rulebookName, verdict }),
           });
           const data = await res.json();
           if (data.success && data.title) {
@@ -244,16 +246,16 @@ export default function HomePage() {
         evaluation: m.execution?.evaluation,
       }));
 
-      const decision = decisions.find(d => d.id === selectedDecision);
-      const decisionName = decision?.name || 'Unknown';
+      const rb = rulebooks.find(d => d.id === selectedRulebook);
+      const rulebookName = rb?.name || 'Unknown';
 
       let currentSessionId = sessionId;
       if (sessionId) {
         await sessionsRepo.update(sessionId, sessionMessages);
       } else {
         const session = await sessionsRepo.create(
-          selectedDecision,
-          decisionName,
+          selectedRulebook,
+          rulebookName,
           sessionMessages
         );
         setSessionId(session.id);
@@ -263,23 +265,39 @@ export default function HomePage() {
       // Generate AI title after first evaluation (background, fire-and-forget)
       const hasEval = sessionMessages.some((m: SessionMessage) => m.evaluation);
       const firstUserMsg = sessionMessages.find((m: SessionMessage) => m.type === 'user')?.content;
-      if (hasEval && firstUserMsg && !titleGeneratedRef.current && currentSessionId) {
-        titleGeneratedRef.current = true;
+      if (hasEval && firstUserMsg && !titleGeneratedRef.current && !titleGenerationInFlightRef.current && currentSessionId) {
+        titleGenerationInFlightRef.current = true;
+
         const verdict = sessionMessages.find(m => m.evaluation)?.evaluation?.verdict ?? null;
-        fetch('/api/title', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userMessage: firstUserMsg, decisionName, verdict }),
-        })
-          .then((r: Response) => r.json())
-          .then((data: { success: boolean; title?: string }) => {
-            if (data.success && data.title) {
-              sessionsRepo.updateTitle(currentSessionId!, data.title);
-              // Refresh recent sessions so new title appears
-              sessionsRepo.list().then((s: Session[]) => setRecentSessions(s.slice(0, 3)));
+        const tryGenerateTitle = async (attempt: number) => {
+          try {
+            const res = await fetch('/api/title', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userMessage: firstUserMsg, rulebookName, verdict }),
+            });
+
+            const data = await res.json().catch(() => null) as { success?: boolean; title?: string; error?: string } | null;
+            if (!res.ok || !data?.success || !data.title) {
+              throw new Error(data?.error || 'Title generation failed');
             }
-          })
-          .catch(() => {}); // Fail silently — template title remains
+
+            await sessionsRepo.updateTitle(currentSessionId, data.title);
+            titleGeneratedRef.current = true;
+            titleGenerationInFlightRef.current = false;
+            sessionsRepo.list().then((s: Session[]) => setRecentSessions(s.slice(0, 3)));
+          } catch {
+            if (attempt < 2) {
+              setTimeout(() => {
+                void tryGenerateTitle(attempt + 1);
+              }, 600 * (attempt + 1));
+              return;
+            }
+            titleGenerationInFlightRef.current = false;
+          }
+        };
+
+        void tryGenerateTitle(0);
       }
     };
 
@@ -287,19 +305,19 @@ export default function HomePage() {
   }, [messages, isStreaming]);
 
   // Run real evaluation via Groq API
-  const runEvaluation = async (input: string, decisionId: string): Promise<ExecutionResult> => {
-    const decision = decisions.find(d => d.id === decisionId);
-    const decisionName = decision?.name || 'Unknown Decision';
+  const runEvaluation = async (input: string, rulebookId: string): Promise<ExecutionResult> => {
+    const rb = rulebooks.find(d => d.id === rulebookId);
+    const rulebookName = rb?.name || 'Unknown Rulebook';
 
-    // Fetch real rules and schema for this decision
-    const [decisionRules, schema] = await Promise.all([
-      rulesRepo.listByDecisionId(decisionId),
-      schemasRepo.getByDecisionId(decisionId),
+    // Fetch real rules and schema for this rulebook
+    const [rulebookRules, schema] = await Promise.all([
+      rulesRepo.listByRulebookId(rulebookId),
+      schemasRepo.getByRulebookId(rulebookId),
     ]);
-    const enabledRules = decisionRules.filter((r: { enabled: boolean }) => r.enabled);
+    const enabledRules = rulebookRules.filter((r: { enabled: boolean }) => r.enabled);
 
     if (enabledRules.length === 0) {
-      throw new Error('No active rules found for this ruleset. Add rules in the Rules page first.');
+      throw new Error('No active rules found for this rulebook. Add rules in the Rules page first.');
     }
 
     // Store rule names for the loading skeleton
@@ -318,8 +336,8 @@ export default function HomePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         input,
-        decision_id: decisionId,
-        decision_name: decisionName,
+        rulebook_id: rulebookId,
+        rulebook_name: rulebookName,
         rules: evaluatorRules,
         output_type: schema?.outputType || 'pass_fail',
       }),
@@ -343,7 +361,7 @@ export default function HomePage() {
 
     return {
       id: result.id,
-      decisionName,
+      rulebookName,
       input,
       verdict: result.verdict,
       reason: result.reason,
@@ -357,7 +375,7 @@ export default function HomePage() {
 
   // Stream a follow-up chat response
   const streamChat = async (userContent: string) => {
-    const decision = decisions.find(d => d.id === selectedDecision);
+    const chatRb = rulebooks.find(d => d.id === selectedRulebook);
     const msgId = `msg-${crypto.randomUUID()}`;
 
     // Build conversation history from messages (only user/system text, not evaluation cards)
@@ -373,7 +391,7 @@ export default function HomePage() {
     // Build evaluation context if available
     const evalCtx = lastEvaluationRef.current;
     const context = evalCtx ? {
-      decision_name: decision?.name || 'Unknown',
+      rulebook_name: chatRb?.name || 'Unknown',
       last_evaluation: {
         verdict: evalCtx.verdict,
         reason: evalCtx.reason,
@@ -520,15 +538,15 @@ export default function HomePage() {
       return;
     }
 
-    if (!selectedDecision) {
-      toast.error('Select a ruleset first');
+    if (!selectedRulebook) {
+      toast.error('Select a rulebook first');
       return;
     }
 
     setIsRunning(true);
 
     try {
-      const execution = await runEvaluation(content, selectedDecision);
+      const execution = await runEvaluation(content, selectedRulebook);
 
       // Track the latest evaluation for follow-up context
       if (execution.evaluation) {
@@ -563,7 +581,7 @@ export default function HomePage() {
       const isTimeout = msg.includes('timeout') || msg.includes('abort');
 
       const userFriendly = isNoRules
-        ? 'No active rules found for this ruleset. Go to the Rules page and add at least one enabled rule.'
+        ? 'No active rules found for this rulebook. Go to the Rules page and add at least one enabled rule.'
         : isApiKey
         ? 'API configuration issue. Check that your GROQ_API_KEY is set in .env.local and restart the server.'
         : isTimeout
@@ -602,6 +620,7 @@ export default function HomePage() {
     lastEvaluationRef.current = null;
     busyLockRef.current = false;
     titleGeneratedRef.current = false;
+    titleGenerationInFlightRef.current = false;
     window.history.replaceState(null, '', '/home');
     // Refresh recent sessions so the just-completed session appears
     const fresh = await sessionsRepo.list();
@@ -623,14 +642,14 @@ export default function HomePage() {
     setShowWelcome(false);
     await updateOnboardingState({ welcomed: true });
     if (onboarding) setOnboarding({ ...onboarding, welcomed: true });
-    window.location.href = '/decisions/new?templates=true';
+    window.location.href = '/rulebooks/new?templates=true';
   };
 
   const handleCreateFromScratch = async () => {
     setShowWelcome(false);
     await updateOnboardingState({ welcomed: true });
     if (onboarding) setOnboarding({ ...onboarding, welcomed: true });
-    window.location.href = '/decisions/new';
+    window.location.href = '/rulebooks/new';
   };
 
   const handleTakeTour = async () => {
@@ -775,12 +794,12 @@ export default function HomePage() {
                 isFocused={isFocused}
                 setIsFocused={setIsFocused}
                 isRunning={isBusy}
-                decisions={decisions}
-                selectedDecision={selectedDecision}
-                setSelectedDecision={setSelectedDecision}
+                rulebooks={rulebooks}
+                selectedRulebook={selectedRulebook}
+                setSelectedRulebook={setSelectedRulebook}
                 textareaRef={textareaRef}
                 minRows={1}
-                showDecisionSelector={false}
+                showRulebookSelector={false}
               />
             </div>
           </div>
@@ -799,12 +818,12 @@ export default function HomePage() {
                 Decide
               </button>
               <Link
-                href="/decisions"
+                href="/rulebooks"
                 role="tab"
                 aria-selected="false"
                 className="px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               >
-                Rules
+                Rulebooks
               </Link>
             </div>
           </div>
@@ -841,9 +860,9 @@ export default function HomePage() {
                     isFocused={isFocused}
                     setIsFocused={setIsFocused}
                     isRunning={isBusy}
-                    decisions={decisions}
-                    selectedDecision={selectedDecision}
-                    setSelectedDecision={setSelectedDecision}
+                    rulebooks={rulebooks}
+                    selectedRulebook={selectedRulebook}
+                    setSelectedRulebook={setSelectedRulebook}
                     textareaRef={textareaRef}
                     minRows={4}
                   />
@@ -851,9 +870,9 @@ export default function HomePage() {
 
                 {/* Suggested prompts — context-aware for onboarding */}
                 {(() => {
-                  // Use onboarding suggestions when the seed decision is selected
-                  const isSeedDecision = onboarding?.seedDecisionId && selectedDecision === onboarding.seedDecisionId;
-                  const suggestions = isSeedDecision ? ONBOARDING_SUGGESTIONS : DEFAULT_SUGGESTIONS;
+                  // Use onboarding suggestions when the seed rulebook is selected
+                  const isSeedRulebook = onboarding?.seedDecisionId && selectedRulebook === onboarding.seedDecisionId;
+                  const suggestions = isSeedRulebook ? ONBOARDING_SUGGESTIONS : DEFAULT_SUGGESTIONS;
                   return (
                     <div className="flex items-center justify-center gap-2 flex-wrap">
                       <span className="text-[11px] text-[var(--muted-foreground)]">Try:</span>
@@ -930,7 +949,7 @@ export default function HomePage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-[var(--foreground)] truncate">{s.title}</p>
                             <p className="text-xs text-[var(--muted-foreground)] truncate mt-0.5">
-                              {s.decisionName}
+                              {s.rulebookName}
                               {reason && <> &middot; {reason}</>}
                             </p>
                           </div>
@@ -974,12 +993,12 @@ interface SuperInputProps {
   isFocused: boolean;
   setIsFocused: (focused: boolean) => void;
   isRunning: boolean;
-  decisions: DecisionWithStats[];
-  selectedDecision: string;
-  setSelectedDecision: (id: string) => void;
+  rulebooks: RulebookWithStats[];
+  selectedRulebook: string;
+  setSelectedRulebook: (id: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   minRows?: number;
-  showDecisionSelector?: boolean;
+  showRulebookSelector?: boolean;
 }
 
 function SuperInput({
@@ -990,14 +1009,14 @@ function SuperInput({
   isFocused,
   setIsFocused,
   isRunning,
-  decisions,
-  selectedDecision,
-  setSelectedDecision,
+  rulebooks,
+  selectedRulebook,
+  setSelectedRulebook,
   textareaRef,
   minRows = 1,
-  showDecisionSelector = true,
+  showRulebookSelector = true,
 }: SuperInputProps) {
-  const canSubmit = !isRunning && !!selectedDecision && !!value.trim();
+  const canSubmit = !isRunning && !!selectedRulebook && !!value.trim();
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1136,26 +1155,26 @@ function SuperInput({
       {/* Action Bar */}
       <div className="flex items-center justify-between px-3 py-2.5 border-t border-[var(--border)]/40">
         <div className="flex items-center gap-1">
-          {/* Decision Selector — full dropdown in empty state, static label in chat */}
-          {showDecisionSelector ? (
-            <Select value={selectedDecision} onValueChange={setSelectedDecision}>
-              <SelectTrigger id="tour-decision-selector" className="w-auto h-8 rounded-lg px-3 gap-2 text-xs font-medium bg-[var(--muted)] hover:bg-[var(--secondary-hover)] border border-[var(--border)]/60 shadow-none transition-all focus:ring-0">
+          {/* Rulebook Selector — full dropdown in empty state, static label in chat */}
+          {showRulebookSelector ? (
+            <Select value={selectedRulebook} onValueChange={setSelectedRulebook}>
+              <SelectTrigger id="tour-rulebook-selector" className="w-auto h-8 rounded-lg px-3 gap-2 text-xs font-medium bg-[var(--muted)] hover:bg-[var(--secondary-hover)] border border-[var(--border)]/60 shadow-none transition-all focus:ring-0">
                 <GitBranch className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
                 <span className="max-w-[140px] truncate text-[var(--foreground)]">
-                  {decisions.find(d => d.id === selectedDecision)?.name || "Select ruleset"}
+                  {rulebooks.find(d => d.id === selectedRulebook)?.name || "Select rulebook"}
                 </span>
               </SelectTrigger>
               <SelectContent align="start" className="min-w-[220px] bg-[var(--popover)] border-[var(--border)] shadow-xl">
-                {decisions.map((decision) => (
-                  <SelectItem key={decision.id} value={decision.id}>
-                    {decision.name}
+                {rulebooks.map((rb) => (
+                  <SelectItem key={rb.id} value={rb.id}>
+                    {rb.name}
                   </SelectItem>
                 ))}
                 <div className="p-1 border-t border-[var(--border)] mt-1">
                   <Button variant="ghost" size="sm" className="w-full justify-start h-8 text-xs" asChild>
-                    <Link href="/decisions/new">
+                    <Link href="/rulebooks/new">
                       <Plus className="w-3 h-3 mr-2" />
-                      New rule
+                      New rulebook
                     </Link>
                   </Button>
                 </div>

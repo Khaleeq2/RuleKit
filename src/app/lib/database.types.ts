@@ -1,6 +1,6 @@
 // ============================================
 // Supabase Database Types (manual)
-// Generated from: supabase/migrations/20260209_0002_full_schema.sql
+// Generated from: supabase/migrations/20260209_0005_rename_to_rulebooks.sql
 // Replace with `supabase gen types` when access is available.
 // ============================================
 
@@ -9,7 +9,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
-      decisions: {
+      rulebooks: {
         Row: {
           id: string;
           user_id: string;
@@ -45,7 +45,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          decision_id: string;
+          rulebook_id: string;
           fields: Json;
           output_type: 'pass_fail' | 'score' | 'custom';
           created_at: string;
@@ -54,7 +54,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id?: string;
-          decision_id: string;
+          rulebook_id: string;
           fields?: Json;
           output_type?: 'pass_fail' | 'score' | 'custom';
           created_at?: string;
@@ -63,18 +63,18 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
-          decision_id?: string;
+          rulebook_id?: string;
           fields?: Json;
           output_type?: 'pass_fail' | 'score' | 'custom';
           created_at?: string;
           updated_at?: string;
         };
       };
-      decision_rules: {
+      rules: {
         Row: {
           id: string;
           user_id: string;
-          decision_id: string;
+          rulebook_id: string;
           name: string;
           description: string;
           order: number;
@@ -88,7 +88,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id?: string;
-          decision_id: string;
+          rulebook_id: string;
           name: string;
           description?: string;
           order?: number;
@@ -102,7 +102,7 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
-          decision_id?: string;
+          rulebook_id?: string;
           name?: string;
           description?: string;
           order?: number;
@@ -118,7 +118,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          decision_id: string;
+          rulebook_id: string;
           version_number: number;
           schema_snapshot: Json;
           rules_snapshot: Json;
@@ -129,7 +129,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id?: string;
-          decision_id: string;
+          rulebook_id: string;
           version_number: number;
           schema_snapshot?: Json;
           rules_snapshot?: Json;
@@ -140,7 +140,7 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
-          decision_id?: string;
+          rulebook_id?: string;
           version_number?: number;
           schema_snapshot?: Json;
           rules_snapshot?: Json;
@@ -153,7 +153,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          decision_id: string;
+          rulebook_id: string;
           environment: 'draft' | 'live';
           active_version_id: string;
           version_number: number;
@@ -162,7 +162,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id?: string;
-          decision_id: string;
+          rulebook_id: string;
           environment: 'draft' | 'live';
           active_version_id: string;
           version_number: number;
@@ -171,7 +171,7 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
-          decision_id?: string;
+          rulebook_id?: string;
           environment?: 'draft' | 'live';
           active_version_id?: string;
           version_number?: number;
@@ -182,11 +182,11 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          decision_id: string;
+          rulebook_id: string;
           name: string;
           description: string;
           input_json: Json;
-          expected_decision: 'pass' | 'fail';
+          expected_verdict: 'pass' | 'fail';
           expected_reason: string | null;
           last_result: Json | null;
           created_at: string;
@@ -195,11 +195,11 @@ export interface Database {
         Insert: {
           id?: string;
           user_id?: string;
-          decision_id: string;
+          rulebook_id: string;
           name: string;
           description?: string;
           input_json?: Json;
-          expected_decision?: 'pass' | 'fail';
+          expected_verdict?: 'pass' | 'fail';
           expected_reason?: string | null;
           last_result?: Json | null;
           created_at?: string;
@@ -208,11 +208,11 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
-          decision_id?: string;
+          rulebook_id?: string;
           name?: string;
           description?: string;
           input_json?: Json;
-          expected_decision?: 'pass' | 'fail';
+          expected_verdict?: 'pass' | 'fail';
           expected_reason?: string | null;
           last_result?: Json | null;
           created_at?: string;
@@ -223,8 +223,8 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          decision_id: string;
-          decision_name: string;
+          rulebook_id: string;
+          rulebook_name: string;
           version_id: string;
           version_number: number;
           environment: 'draft' | 'live';
@@ -244,8 +244,8 @@ export interface Database {
         Insert: {
           id?: string;
           user_id?: string;
-          decision_id: string;
-          decision_name: string;
+          rulebook_id: string;
+          rulebook_name: string;
           version_id: string;
           version_number: number;
           environment: 'draft' | 'live';
@@ -265,8 +265,8 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
-          decision_id?: string;
-          decision_name?: string;
+          rulebook_id?: string;
+          rulebook_name?: string;
           version_id?: string;
           version_number?: number;
           environment?: 'draft' | 'live';
@@ -289,8 +289,8 @@ export interface Database {
           id: string;
           user_id: string;
           title: string;
-          decision_id: string;
-          decision_name: string;
+          rulebook_id: string;
+          rulebook_name: string;
           verdict: 'pass' | 'fail' | null;
           message_count: number;
           messages: Json;
@@ -301,8 +301,8 @@ export interface Database {
           id?: string;
           user_id?: string;
           title?: string;
-          decision_id: string;
-          decision_name: string;
+          rulebook_id: string;
+          rulebook_name: string;
           verdict?: 'pass' | 'fail' | null;
           message_count?: number;
           messages?: Json;
@@ -313,8 +313,8 @@ export interface Database {
           id?: string;
           user_id?: string;
           title?: string;
-          decision_id?: string;
-          decision_name?: string;
+          rulebook_id?: string;
+          rulebook_name?: string;
           verdict?: 'pass' | 'fail' | null;
           message_count?: number;
           messages?: Json;
@@ -353,7 +353,7 @@ export interface Database {
           amount: number;
           description: string;
           run_id: string | null;
-          decision_id: string | null;
+          rulebook_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -363,7 +363,7 @@ export interface Database {
           amount: number;
           description?: string;
           run_id?: string | null;
-          decision_id?: string | null;
+          rulebook_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -373,7 +373,7 @@ export interface Database {
           amount?: number;
           description?: string;
           run_id?: string | null;
-          decision_id?: string | null;
+          rulebook_id?: string | null;
           created_at?: string;
         };
       };
@@ -383,8 +383,8 @@ export interface Database {
           user_id: string;
           type: string;
           actor_name: string;
-          decision_id: string | null;
-          decision_name: string | null;
+          rulebook_id: string | null;
+          rulebook_name: string | null;
           version_id: string | null;
           description: string;
           metadata: Json | null;
@@ -395,8 +395,8 @@ export interface Database {
           user_id?: string;
           type: string;
           actor_name?: string;
-          decision_id?: string | null;
-          decision_name?: string | null;
+          rulebook_id?: string | null;
+          rulebook_name?: string | null;
           version_id?: string | null;
           description?: string;
           metadata?: Json | null;
@@ -407,8 +407,8 @@ export interface Database {
           user_id?: string;
           type?: string;
           actor_name?: string;
-          decision_id?: string | null;
-          decision_name?: string | null;
+          rulebook_id?: string | null;
+          rulebook_name?: string | null;
           version_id?: string | null;
           description?: string;
           metadata?: Json | null;
