@@ -285,7 +285,7 @@ export default function BillingPage() {
                   <span className={`text-[44px] font-semibold ${balance && balance.balance <= 10 ? 'text-amber-600' : 'text-[var(--foreground)]'}`}>
                     {balance?.balance || 0}
                   </span>
-                  <span className="text-[length:var(--font-size-body)] text-[var(--muted-foreground)]">credits</span>
+                  <span className="text-[length:var(--font-size-body)] text-[var(--muted-foreground)]">credits remaining</span>
                 </div>
 
                 {balance && balance.balance <= 10 && (
@@ -417,22 +417,31 @@ export default function BillingPage() {
               </CardContent>
             </Card>
 
-            {/* Pricing Info */}
+            {/* What does 1 credit get you? */}
             <Card className="border-0 shadow-[0_1px_3px_0_rgb(0_0_0/0.1)]">
               <CardHeader className="pb-2">
-                <CardTitle className="text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">Pricing</CardTitle>
+                <CardTitle className="text-[length:var(--font-size-meta)] text-[var(--muted-foreground)] uppercase tracking-[0.02em] font-medium">What does 1 credit get you?</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[length:var(--font-size-body-sm)] text-[var(--muted-foreground)]">API evaluation run</span>
-                  <span className="text-[length:var(--font-size-body-sm)] font-medium text-[var(--foreground)]">1 credit</span>
+                <p className="text-[13px] text-[var(--muted-foreground)] leading-relaxed">
+                  Each time you check input against your rules — whether from the Home page or via API — it uses <strong className="text-[var(--foreground)]">1 credit</strong>.
+                </p>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between p-2.5 rounded-md bg-[var(--muted)]/40">
+                    <span className="text-[13px] text-[var(--muted-foreground)]">Run a check (Home page)</span>
+                    <span className="text-[13px] font-medium text-[var(--foreground)]">1 credit</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2.5 rounded-md bg-[var(--muted)]/40">
+                    <span className="text-[13px] text-[var(--muted-foreground)]">API evaluation call</span>
+                    <span className="text-[13px] font-medium text-[var(--foreground)]">1 credit</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2.5 rounded-md bg-[var(--muted)]/40">
+                    <span className="text-[13px] text-[var(--muted-foreground)]">Test run</span>
+                    <span className="text-[13px] font-medium text-emerald-600 dark:text-emerald-400">Free</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[length:var(--font-size-body-sm)] text-[var(--muted-foreground)]">Test run</span>
-                  <span className="text-[length:var(--font-size-body-sm)] font-medium text-[var(--foreground)]">Free*</span>
-                </div>
-                <p className="text-[length:var(--font-size-meta)] text-[var(--muted-foreground)]">
-                  *Up to 50 free test runs per month included
+                <p className="text-[11px] text-[var(--muted-foreground)]">
+                  Up to 50 free test runs per month included. Credits never expire.
                 </p>
               </CardContent>
             </Card>

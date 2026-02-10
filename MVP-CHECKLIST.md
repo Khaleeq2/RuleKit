@@ -479,11 +479,11 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] Users can identify what each row represents without docs.
     - [x] Empty states point clearly to next action.
 
-- [ ] **T16: Billing explanation clarity pass**
+- [x] **T16: Billing explanation clarity pass**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/billing/page.tsx`
   - Change: Explain credits in task/outcome terms, not internal terminology.
   - Acceptance:
-    - [ ] User can answer "what does one credit get me?" from the page alone.
+    - [x] User can answer "what does one credit get me?" from the page alone.
 
 - [ ] **T17: Settings truthfulness pass (delete account flow)**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/settings/page.tsx`
