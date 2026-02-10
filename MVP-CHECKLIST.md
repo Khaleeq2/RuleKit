@@ -463,12 +463,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
   - Acceptance:
     - [x] No dead-end placeholder experience remains on primary nav routes.
 
-- [ ] **T14: Make API docs match backend auth behavior**
+- [x] **T14: Make API docs match backend auth behavior**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/api/page.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/lib/api-auth.ts`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/api/evaluate/route.ts`
   - Change: Align docs and implementation on one authentication mechanism.
   - Acceptance:
-    - [ ] Quickstart request succeeds when followed exactly.
-    - [ ] No contradictory auth instructions exist.
+    - [x] Quickstart request succeeds when followed exactly.
+    - [x] No contradictory auth instructions exist.
 
 ## Sprint 3: Trust, Accessibility, and Reliability
 

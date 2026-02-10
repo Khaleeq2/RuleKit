@@ -2,15 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   Copy,
   Check,
   Code,
   Terminal,
   FileCode,
-  ExternalLink,
-  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -80,18 +77,15 @@ export default function ApiPage() {
   // Code snippets
   const snippets = {
     curl: `curl -X POST "${fullUrl}" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -H "X-Environment: ${selectedEnv}" \\
+  -b "YOUR_SESSION_COOKIES" \\
   -d '${JSON.stringify({ rulebookId, input: sampleInput }, null, 2)}'`,
 
-    javascript: `const response = await fetch("${fullUrl}", {
+    javascript: `// Browser-side (session cookie is sent automatically)
+const response = await fetch("${fullUrl}", {
   method: "POST",
-  headers: {
-    "Authorization": "Bearer YOUR_API_KEY",
-    "Content-Type": "application/json",
-    "X-Environment": "${selectedEnv}"
-  },
+  headers: { "Content-Type": "application/json" },
+  credentials: "include",
   body: JSON.stringify(${JSON.stringify({ rulebookId: 'RULEBOOK_ID', input: sampleInput }, null, 4).split('\n').join('\n    ')})
 });
 
@@ -101,36 +95,18 @@ console.log(result);
 
     python: `import requests
 
+# Note: This endpoint currently uses session-based auth.
+# External API key support is planned.
 response = requests.post(
     "${fullUrl}",
-    headers={
-        "Authorization": "Bearer YOUR_API_KEY",
-        "Content-Type": "application/json",
-        "X-Environment": "${selectedEnv}"
-    },
+    headers={"Content-Type": "application/json"},
+    cookies={"your-session-cookie": "value"},
     json=${JSON.stringify({ rulebookId: 'RULEBOOK_ID', input: sampleInput }, null, 4).split('\n').join('\n    ')}
 )
 
 result = response.json()
 print(result)
 # {"result": {"verdict": "pass" | "fail", "rules": [...]}}`,
-
-    node: `const axios = require('axios');
-
-const response = await axios.post(
-  "${fullUrl}",
-  ${JSON.stringify({ rulebookId: 'RULEBOOK_ID', input: sampleInput }, null, 4).split('\n').join('\n  ')},
-  {
-    headers: {
-      "Authorization": "Bearer YOUR_API_KEY",
-      "Content-Type": "application/json",
-      "X-Environment": "${selectedEnv}"
-    }
-  }
-);
-
-console.log(response.data);
-// { result: { verdict: "pass" | "fail", rules: [...] } }`,
   };
 
   return (
@@ -156,12 +132,6 @@ console.log(response.data);
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/integrations">
-              Manage API keys
-              <ExternalLink className="w-4 h-4" />
-            </Link>
-          </Button>
         </div>
       </div>
 
@@ -285,10 +255,6 @@ console.log(response.data);
                 <Code className="w-4 h-4" />
                 Python
               </TabsTrigger>
-              <TabsTrigger value="node" className="gap-2">
-                <Code className="w-4 h-4" />
-                Node.js
-              </TabsTrigger>
             </TabsList>
 
             {Object.entries(snippets).map(([lang, code]) => (
@@ -322,22 +288,21 @@ console.log(response.data);
         </CardContent>
       </Card>
 
-      {/* Headers */}
+      {/* Auth & Headers */}
       <Card className="mt-6">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Required Headers</CardTitle>
+          <CardTitle className="text-base">Authentication</CardTitle>
+          <CardDescription>
+            This endpoint uses session-based authentication. Requests must include a valid Supabase session cookie.
+          </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="p-3 rounded-lg bg-amber-50/60 border border-amber-200/60 dark:bg-amber-900/10 dark:border-amber-800/40 mb-4">
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              External API key authentication is planned. For now, this endpoint works with browser-based requests where you&apos;re signed in.
+            </p>
+          </div>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--muted)]">
-              <div>
-                <code className="font-mono text-sm font-medium">Authorization</code>
-                <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                  Bearer token with your API key
-                </p>
-              </div>
-              <Badge variant="destructive" className="text-xs">Required</Badge>
-            </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--muted)]">
               <div>
                 <code className="font-mono text-sm font-medium">Content-Type</code>
@@ -349,12 +314,12 @@ console.log(response.data);
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--muted)]">
               <div>
-                <code className="font-mono text-sm font-medium">X-Environment</code>
+                <code className="font-mono text-sm font-medium">Cookie</code>
                 <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                  Target environment (draft, live)
+                  Supabase session cookie (sent automatically in browser)
                 </p>
               </div>
-              <Badge variant="secondary" className="text-xs">Optional</Badge>
+              <Badge variant="destructive" className="text-xs">Required</Badge>
             </div>
           </div>
         </CardContent>
