@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Copy,
@@ -8,20 +8,15 @@ import {
   Code,
   Terminal,
   FileCode,
+  Shield,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
-import { rulebooksRepo, schemasRepo } from '@/app/lib/rulebooks';
-import { Rulebook, Schema, Environment, ENVIRONMENTS } from '@/app/lib/types';
+import { rulebooksRepo, rulesRepo, schemasRepo } from '@/app/lib/rulebooks';
+import { Rulebook, Rule, Schema } from '@/app/lib/types';
 import { toast } from 'sonner';
 
 // ============================================
@@ -34,18 +29,21 @@ export default function ApiPage() {
 
   const [rulebook, setRulebook] = useState<Rulebook | null>(null);
   const [schema, setSchema] = useState<Schema | null>(null);
-  const [selectedEnv, setSelectedEnv] = useState<Environment>('draft');
+  const [rules, setRules] = useState<Rule[]>([]);
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
 
-  // Load rulebook and schema
+  // Load rulebook, schema, and rules
   useEffect(() => {
     const loadData = async () => {
-      const [rulebookData, schemaData] = await Promise.all([
+      const [rulebookData, schemaData, rulesData] = await Promise.all([
         rulebooksRepo.getById(rulebookId),
         schemasRepo.getByRulebookId(rulebookId),
+        rulesRepo.listByRulebookId(rulebookId),
       ]);
+
       setRulebook(rulebookData);
       setSchema(schemaData);
+      setRules(rulesData);
     };
 
     loadData();
@@ -62,138 +60,234 @@ export default function ApiPage() {
   const endpoint = '/api/evaluate';
   const fullUrl = `${baseUrl}${endpoint}`;
 
-  // Generate sample input from schema
-  const sampleInput: Record<string, unknown> = {};
-  schema?.fields.forEach((field) => {
-    if (field.type === 'number') {
-      sampleInput[field.name] = parseFloat(field.example) || 0;
-    } else if (field.type === 'boolean') {
-      sampleInput[field.name] = field.example === 'true';
-    } else {
-      sampleInput[field.name] = field.example || '';
+  const sampleInputObject = useMemo<Record<string, unknown>>(() => {
+    const parsed: Record<string, unknown> = {};
+
+    schema?.fields.forEach((field) => {
+      if (field.type === 'number') {
+        parsed[field.name] = Number(field.example) || 0;
+      } else if (field.type === 'boolean') {
+        parsed[field.name] = field.example === 'true';
+      } else {
+        parsed[field.name] = field.example || '';
+      }
+    });
+
+    return parsed;
+  }, [schema]);
+
+  const sampleInputText = useMemo(() => {
+    if (Object.keys(sampleInputObject).length > 0) {
+      return JSON.stringify(sampleInputObject, null, 2);
     }
-  });
+
+    return 'Applicant: age 28, annual income 85000, credit score 740';
+  }, [sampleInputObject]);
+
+  const enabledRules = useMemo(() => {
+    const mapped = rules
+      .filter((rule) => rule.enabled)
+      .map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        description: rule.description,
+        reason: rule.reason,
+      }));
+
+    if (mapped.length > 0) return mapped;
+
+    return [
+      {
+        id: 'rule_min_credit_score',
+        name: 'Minimum credit score',
+        description: 'Fail if credit score is below 650.',
+        reason: 'Credit score is below the required threshold.',
+      },
+    ];
+  }, [rules]);
+
+  const requestPayload = useMemo(
+    () => ({
+      input: sampleInputText,
+      rulebook_id: rulebookId,
+      rulebook_name: rulebook?.name || 'Sample Rulebook',
+      rules: enabledRules,
+      output_type: schema?.outputType || 'pass_fail',
+    }),
+    [enabledRules, rulebook?.name, rulebookId, sampleInputText, schema?.outputType]
+  );
 
   // Code snippets
   const snippets = {
-    curl: `curl -X POST "${fullUrl}" \\
-  -H "Content-Type: application/json" \\
-  -b "YOUR_SESSION_COOKIES" \\
-  -d '${JSON.stringify({ rulebookId, input: sampleInput }, null, 2)}'`,
+    javascript: `// Works from your signed-in browser app (cookies are sent automatically)
+const payload = ${JSON.stringify(requestPayload, null, 2)};
 
-    javascript: `// Browser-side (session cookie is sent automatically)
-const response = await fetch("${fullUrl}", {
+const response = await fetch("${endpoint}", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   credentials: "include",
-  body: JSON.stringify(${JSON.stringify({ rulebookId: 'RULEBOOK_ID', input: sampleInput }, null, 4).split('\n').join('\n    ')})
+  body: JSON.stringify(payload),
 });
 
-const result = await response.json();
-console.log(result);
-// { result: { verdict: "pass" | "fail", rules: [...] } }`,
+const data = await response.json();
+if (!data.success) {
+  console.error("Evaluation failed:", data.error);
+} else {
+  console.log("Verdict:", data.result.verdict);
+  console.log("Reason:", data.result.reason);
+}`,
+
+    curl: `# Requires a valid signed-in Supabase session cookie
+curl -X POST "${fullUrl}" \\
+  -H "Content-Type: application/json" \\
+  -b "sb-<project-id>-auth-token=..." \\
+  -d '${JSON.stringify(requestPayload, null, 2)}'`,
 
     python: `import requests
 
-# Note: This endpoint currently uses session-based auth.
-# External API key support is planned.
-response = requests.post(
+payload = ${JSON.stringify(requestPayload, null, 4)}
+
+# Requires a valid signed-in Supabase session cookie
+res = requests.post(
     "${fullUrl}",
     headers={"Content-Type": "application/json"},
-    cookies={"your-session-cookie": "value"},
-    json=${JSON.stringify({ rulebookId: 'RULEBOOK_ID', input: sampleInput }, null, 4).split('\n').join('\n    ')}
+    cookies={"sb-<project-id>-auth-token": "..."},
+    json=payload,
 )
 
-result = response.json()
-print(result)
-# {"result": {"verdict": "pass" | "fail", "rules": [...]}}`,
+print(res.status_code)
+print(res.json())`,
   };
+
+  const responseExample = `{
+  "success": true,
+  "result": {
+    "id": "run_123",
+    "rulebook_id": "${rulebookId}",
+    "rulebook_name": "${rulebook?.name || 'Sample Rulebook'}",
+    "input": "...",
+    "verdict": "pass",
+    "reason": "All active rules passed.",
+    "evaluations": [
+      {
+        "rule_id": "rule_min_credit_score",
+        "rule_name": "Minimum credit score",
+        "verdict": "pass",
+        "confidence": 0.98,
+        "reason": "Credit score meets the threshold.",
+        "suggestion": null,
+        "evidence_spans": [],
+        "absence_proof": null
+      }
+    ],
+    "model_meta": {
+      "model": "...",
+      "prompt_version": "...",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "reasoning_effort": "..."
+    },
+    "latency_ms": 132,
+    "timestamp": "2026-02-10T12:00:00.000Z"
+  }
+}`;
 
   return (
     <div className="max-w-[1400px] mx-auto px-6 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">API</h2>
-          <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
-            Integrate this rulebook into your application
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Select value={selectedEnv} onValueChange={(v) => setSelectedEnv(v as Environment)}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ENVIRONMENTS.map((env) => (
-                <SelectItem key={env} value={env} className="capitalize">
-                  {env === 'draft' ? 'Draft' : 'Live'}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="mb-6">
+        <h2 className="text-[16px] font-medium text-[var(--foreground)] tracking-[-0.01em]">API</h2>
+        <p className="text-[13px] text-[var(--muted-foreground)] mt-0.5">
+          Evaluate input against this rulebook via <code className="font-mono">POST {endpoint}</code>
+        </p>
       </div>
 
-      {/* Quick Start — copy-pastable cURL front and center */}
+      {/* Auth notice */}
+      <Card className="mb-6 border-amber-200/70 bg-amber-50/40 dark:border-amber-800/40 dark:bg-amber-900/10">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <Shield className="w-4 h-4 mt-0.5 text-amber-700 dark:text-amber-300" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Session-based authentication</p>
+              <p className="text-sm text-amber-700/90 dark:text-amber-300/90">
+                This endpoint accepts signed-in Supabase session cookies. Browser-side calls should use
+                {' '}<code className="font-mono">credentials: &quot;include&quot;</code>. API key auth is not available yet.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {rules.filter((rule) => rule.enabled).length === 0 && (
+        <Card className="mb-6 border-amber-200/70 bg-amber-50/40 dark:border-amber-800/40 dark:bg-amber-900/10">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-700 dark:text-amber-300" />
+              <p className="text-sm text-amber-700/90 dark:text-amber-300/90">
+                This rulebook currently has no enabled rules. The examples below include placeholder rules,
+                but real requests require at least one enabled rule.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick Start */}
       <Card className="mb-6 bg-gradient-to-br from-[var(--brand)]/6 to-transparent border-[var(--brand)]/15">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <Terminal className="w-4 h-4" />
-                Quick Start
+                Quick Start (browser)
               </CardTitle>
-              <CardDescription className="mt-1">Copy and run this in your terminal</CardDescription>
+              <CardDescription className="mt-1">Copy this to your signed-in browser app</CardDescription>
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleCopy(snippets.curl, 'quickstart')}
+              onClick={() => handleCopy(snippets.javascript, 'quickstart')}
             >
               {copiedSnippet === 'quickstart' ? (
                 <><Check className="w-3.5 h-3.5 text-[var(--success)]" />Copied</>
               ) : (
-                <><Copy className="w-3.5 h-3.5" />Copy command</>
+                <><Copy className="w-3.5 h-3.5" />Copy snippet</>
               )}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <pre className="p-4 rounded-lg bg-[var(--card)] border border-[var(--border)] text-xs font-mono overflow-auto max-h-48 leading-relaxed">
-            {snippets.curl}
+          <pre className="p-4 rounded-lg bg-[var(--card)] border border-[var(--border)] text-xs font-mono overflow-auto max-h-64 leading-relaxed">
+            {snippets.javascript}
           </pre>
           <div className="flex items-center gap-3 mt-3">
             <Badge className="bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20 font-mono text-[10px]">
               POST
             </Badge>
-            <code className="text-xs font-mono text-[var(--muted-foreground)]">
-              {fullUrl}
-            </code>
+            <code className="text-xs font-mono text-[var(--muted-foreground)]">{fullUrl}</code>
           </div>
         </CardContent>
       </Card>
 
       {/* Request/Response */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Request */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Request Body</CardTitle>
             <CardDescription>
-              JSON payload matching your input schema
+              Exact payload shape required by <code className="font-mono">/api/evaluate</code>
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="relative group/code">
-              <pre className="p-4 rounded-lg bg-[var(--muted)] text-sm font-mono overflow-auto max-h-64">
-                {JSON.stringify(sampleInput, null, 2)}
+              <pre className="p-4 rounded-lg bg-[var(--muted)] text-sm font-mono overflow-auto max-h-80">
+                {JSON.stringify(requestPayload, null, 2)}
               </pre>
               <Button
                 variant="ghost"
                 size="icon"
                 className="absolute top-2 right-2 opacity-0 group-hover/code:opacity-100 transition-opacity"
-                onClick={() => handleCopy(JSON.stringify(sampleInput, null, 2), 'request')}
+                onClick={() => handleCopy(JSON.stringify(requestPayload, null, 2), 'request')}
               >
                 {copiedSnippet === 'request' ? (
                   <Check className="w-4 h-4 text-[var(--success)]" />
@@ -205,51 +299,39 @@ print(result)
           </CardContent>
         </Card>
 
-        {/* Response */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Response</CardTitle>
             <CardDescription>
-              Evaluation result with reason
+              Successful response shape
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="relative">
-              <pre className="p-4 rounded-lg bg-[var(--muted)] text-sm font-mono overflow-auto max-h-64">
-{`{
-  "verdict": "pass" | "fail",
-  "reason": "string",
-  "metadata": {
-    "version": number,
-    "environment": "${selectedEnv}",
-    "latency_ms": number,
-    "credits_used": number
-  }
-}`}
-              </pre>
-            </div>
+            <pre className="p-4 rounded-lg bg-[var(--muted)] text-sm font-mono overflow-auto max-h-80">
+              {responseExample}
+            </pre>
           </CardContent>
         </Card>
       </div>
 
-      {/* Code Snippets */}
+      {/* Language snippets */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Code Examples</CardTitle>
           <CardDescription>
-            Copy-paste snippets for your language
+            Use the same payload and auth model across languages
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="curl">
+          <Tabs defaultValue="javascript">
             <TabsList className="mb-4">
-              <TabsTrigger value="curl" className="gap-2">
-                <Terminal className="w-4 h-4" />
-                cURL
-              </TabsTrigger>
               <TabsTrigger value="javascript" className="gap-2">
                 <FileCode className="w-4 h-4" />
                 JavaScript
+              </TabsTrigger>
+              <TabsTrigger value="curl" className="gap-2">
+                <Terminal className="w-4 h-4" />
+                cURL
               </TabsTrigger>
               <TabsTrigger value="python" className="gap-2">
                 <Code className="w-4 h-4" />
@@ -288,56 +370,21 @@ print(result)
         </CardContent>
       </Card>
 
-      {/* Auth & Headers */}
-      <Card className="mt-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Authentication</CardTitle>
-          <CardDescription>
-            This endpoint uses session-based authentication. Requests must include a valid Supabase session cookie.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="p-3 rounded-lg bg-amber-50/60 border border-amber-200/60 dark:bg-amber-900/10 dark:border-amber-800/40 mb-4">
-            <p className="text-sm text-amber-700 dark:text-amber-300">
-              External API key authentication is planned. For now, this endpoint works with browser-based requests where you&apos;re signed in.
-            </p>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--muted)]">
-              <div>
-                <code className="font-mono text-sm font-medium">Content-Type</code>
-                <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                  application/json
-                </p>
-              </div>
-              <Badge variant="destructive" className="text-xs">Required</Badge>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--muted)]">
-              <div>
-                <code className="font-mono text-sm font-medium">Cookie</code>
-                <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                  Supabase session cookie (sent automatically in browser)
-                </p>
-              </div>
-              <Badge variant="destructive" className="text-xs">Required</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Error Codes */}
+      {/* Error codes */}
       <Card className="mt-6">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Error Codes</CardTitle>
+          <CardDescription>Errors currently returned by this endpoint</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <ErrorCodeRow code="400" description="Invalid request body or missing required fields" />
-            <ErrorCodeRow code="401" description="Invalid or missing API key" />
-            <ErrorCodeRow code="403" description="API key not authorized for this environment" />
-            <ErrorCodeRow code="404" description="Rulebook not found or not deployed" />
+            <ErrorCodeRow code="400" description="Missing or invalid request fields" />
+            <ErrorCodeRow code="401" description="Authentication required (no valid session cookie)" />
+            <ErrorCodeRow code="422" description="Validation error from evaluation layer" />
             <ErrorCodeRow code="429" description="Rate limit exceeded" />
-            <ErrorCodeRow code="500" description="Internal server error" />
+            <ErrorCodeRow code="502" description="Evaluation provider temporarily unavailable" />
+            <ErrorCodeRow code="503" description="Server configuration error" />
+            <ErrorCodeRow code="500" description="Unexpected server error" />
           </div>
         </CardContent>
       </Card>
