@@ -57,9 +57,10 @@ export default function RulebookStudioLayout({
     return unsubscribe;
   }, [rulebookId]);
 
-  // Determine if we're on a secondary page (schema, tests, api)
+  // Determine navigation context
   const basePath = `/rulebooks/${rulebookId}`;
-  const isSecondaryPage = pathname !== basePath && pathname !== `${basePath}/rules`;
+  const isOverview = pathname === basePath;
+  const isSecondaryPage = !isOverview;
 
   if (isLoading) {
     return (
@@ -95,7 +96,7 @@ export default function RulebookStudioLayout({
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" className="w-8 h-8" asChild>
-                <Link href={isSecondaryPage ? `${basePath}/rules` : '/rulebooks'}>
+                <Link href={isOverview ? '/rulebooks' : basePath}>
                   <ArrowLeft className="w-4 h-4" />
                 </Link>
               </Button>

@@ -115,7 +115,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
   - Placeholder routing and indirect instructions.
   - Fix: either functional integrations center or remove from nav.
 
-- [ ] **C9: Rulebook IA lacks a simple step-based overview**
+- [x] **C9: Rulebook IA lacks a simple step-based overview**
   - Immediate redirect to rules and hidden secondary sections.
   - Fix: add guided "Overview" as default entry.
 
@@ -422,12 +422,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
 
 ## Sprint 2: Flow and IA Simplification
 
-- [ ] **T8: Add Rulebook Overview as default entry**
+- [x] **T8: Add Rulebook Overview as default entry**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/page.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/layout.tsx`
   - Change: Replace redirect-first pattern with guided overview screen.
   - Acceptance:
-    - [ ] User sees "what this rulebook does" and next actions first.
-    - [ ] Rules/schema/tests/api are clearly discoverable.
+    - [x] User sees "what this rulebook does" and next actions first.
+    - [x] Rules/schema/tests/api are clearly discoverable.
 
 - [ ] **T9: Promote key rulebook surfaces out of hidden menu**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/layout.tsx`
