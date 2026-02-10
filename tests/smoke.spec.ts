@@ -69,13 +69,16 @@ test.describe('Marketing pages load', () => {
 test.describe('Auth guard redirects', () => {
   test('Home page redirects unauthenticated users', async ({ page }) => {
     await page.goto('/home');
-    // Middleware should redirect to sign-in
-    await page.waitForURL(/sign-in|home/, { timeout: 5000 });
+    await expect(page).toHaveURL(/\/auth\/sign-in/);
+    const redirectUrl = new URL(page.url()).searchParams.get('redirect');
+    expect(redirectUrl).toBe('/home');
   });
 
   test('Rulebooks page redirects unauthenticated users', async ({ page }) => {
     await page.goto('/rulebooks');
-    await page.waitForURL(/sign-in|rulebooks/, { timeout: 5000 });
+    await expect(page).toHaveURL(/\/auth\/sign-in/);
+    const redirectUrl = new URL(page.url()).searchParams.get('redirect');
+    expect(redirectUrl).toBe('/rulebooks');
   });
 });
 
