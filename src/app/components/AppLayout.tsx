@@ -62,7 +62,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const [credits, setCredits] = useState<CreditBalance | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const stored = localStorage.getItem('rulekit-sidebar-expanded');
+    return stored !== null ? stored === 'true' : true; // Default expanded for new users
+  });
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -73,6 +77,11 @@ export function AppLayout({ children }: AppLayoutProps) {
       setUserEmail(data.user?.email ?? null);
     })();
   }, []);
+
+  // Persist sidebar preference
+  useEffect(() => {
+    localStorage.setItem('rulekit-sidebar-expanded', String(sidebarExpanded));
+  }, [sidebarExpanded]);
 
   const logoSrc = mounted && resolvedTheme === 'dark'
     ? '/RuleKit-White.svg'

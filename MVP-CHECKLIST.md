@@ -99,7 +99,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
 
 ## Major Gaps
 
-- [ ] **C5: Navigation discoverability issues**
+- [x] **C5: Navigation discoverability issues**
   - Sidebar defaults to icon-only; key actions hidden in "More."
   - Fix: labeled nav by default for new users + clearer primary studio tabs.
 
@@ -406,12 +406,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] Tooltip/help text is accurate.
     - [x] Keyboard behavior is consistent and tested.
 
-- [ ] **T6: Make sidebar discoverable for first-run users**
+- [x] **T6: Make sidebar discoverable for first-run users**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/components/AppLayout.tsx`
   - Change: Expand nav by default for new users or until onboarding complete.
   - Acceptance:
-    - [ ] New users see labeled navigation without hover dependency.
-    - [ ] Existing users can still collapse nav.
+    - [x] New users see labeled navigation without hover dependency.
+    - [x] Existing users can still collapse nav.
 
 - [ ] **T7: Simplify onboarding checklist**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/lib/onboarding.ts`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/components/OnboardingChecklist.tsx`
