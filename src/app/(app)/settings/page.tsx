@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import {
   User,
@@ -44,7 +45,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Notification settings — stored in user_metadata
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -142,21 +143,20 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDeleteAccount = async () => {
+  const handleSignOutNow = async () => {
     const confirmed = window.confirm(
-      'This will sign you out and submit a deletion request. Our team will process it within a few business days. Continue?'
+      'This will sign you out of your current session. Continue?'
     );
     if (!confirmed) return;
 
-    setIsDeletingAccount(true);
+    setIsSigningOut(true);
     try {
-      // Full deletion requires admin API — sign out and log the request for manual processing
       await supabase.auth.signOut();
-      toast.success('Deletion request submitted. You have been signed out.');
+      toast.success('Signed out.');
       window.location.href = '/auth/sign-in';
     } catch {
-      toast.error('Failed to process request. Please try again.');
-      setIsDeletingAccount(false);
+      toast.error('Failed to sign out. Please try again.');
+      setIsSigningOut(false);
     }
   };
 
@@ -400,25 +400,33 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Account Deletion */}
-          <Card className="border-[var(--destructive)]/20">
+          {/* Account Access */}
+          <Card>
             <CardHeader>
-              <CardTitle className="text-base text-[var(--destructive)]">Delete account</CardTitle>
+              <CardTitle className="text-base">Account access</CardTitle>
               <CardDescription>
-                Request account deletion
+                Sign out from this browser, or contact support for account deletion
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="font-medium text-[var(--foreground)]">Request deletion</p>
+                  <p className="font-medium text-[var(--foreground)]">Sign out now</p>
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    You&apos;ll be signed out immediately. Our team will delete your account and data within a few business days.
+                    Ends your current session on this device.
                   </p>
                 </div>
-                <Button variant="destructive" onClick={handleDeleteAccount} disabled={isDeletingAccount}>
-                  {isDeletingAccount && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Request deletion
+                <Button variant="outline" onClick={handleSignOutNow} disabled={isSigningOut}>
+                  {isSigningOut && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Sign out
+                </Button>
+              </div>
+              <div className="p-3 rounded-lg bg-[var(--muted)]/40 border border-[var(--border)]">
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  Need your account permanently deleted? Contact support and we&apos;ll process your request.
+                </p>
+                <Button asChild variant="link" className="px-0 h-auto mt-1">
+                  <Link href="/contact">Contact support</Link>
                 </Button>
               </div>
             </CardContent>
