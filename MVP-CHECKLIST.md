@@ -498,11 +498,11 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] WCAG 2.2 AA checks pass for core path components.
     - [x] Keyboard-only completion is possible for first-run flow.
 
-- [ ] **T19: Add smoke tests for critical user path**
+- [x] **T19: Add smoke tests for critical user path**
   - Scope: sign up/sign in -> first check -> fail guidance -> rerun -> history.
   - Acceptance:
-    - [ ] A repeatable automated smoke suite exists and passes.
-    - [ ] Core path regressions are caught before release.
+    - [x] A repeatable automated smoke suite exists and passes.
+    - [x] Core path regressions are caught before release.
 
 - [ ] **T20: Remove duplicate planning docs or link them to this master**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/TODO.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/ONBOARDING-PLAN.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/DESIGN-AUDIT.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/MVP.md`
