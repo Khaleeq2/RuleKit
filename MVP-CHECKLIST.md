@@ -85,7 +85,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
   - Evidence: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`
   - Fix: explicit mode selector or clear inline state indicator.
 
-- [ ] **C3: Inconsistent API/auth mental model**
+- [x] **C3: Inconsistent API/auth mental model**
   - Problem: API page suggests bearer API keys, route auth is session-based.
   - User impact: integration failure and trust loss.
   - Evidence: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/api/page.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/lib/api-auth.ts`
@@ -489,7 +489,7 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/settings/page.tsx`
   - Change: Update destructive action language to match actual behavior.
   - Acceptance:
-    - [x] No wording implies immediate deletion when behavior is request-based/sign-out.
+    - [x] No wording implies account deletion unless an actual deletion path exists.
 
 - [x] **T18: Accessibility pass on core journeys**
   - Files: Home/Auth/Rulebooks/History/Billing/Settings surfaces
@@ -510,6 +510,43 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
   - Acceptance:
     - [x] This file is the active master.
     - [x] Other docs are archived or explicitly linked as reference-only.
+
+## Sprint 4: Post-T20 Truth and Reliability Remediation
+
+- [x] **T21: Repair API docs/backend contract drift**
+  - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/api/page.tsx`
+  - Change: Make payload/auth/response/error code docs match `/api/evaluate` exactly.
+  - Acceptance:
+    - [x] Request examples use `input`, `rulebook_id`, `rulebook_name`, and `rules`.
+    - [x] Error codes match implemented route behavior.
+
+- [x] **T22: Remove false account deletion implication**
+  - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/settings/page.tsx`
+  - Change: Replace pseudo-deletion copy with truthful sign-out action + support path.
+  - Acceptance:
+    - [x] UI no longer claims deletion is submitted when only sign-out occurs.
+    - [x] User has a clear support path for real deletion requests.
+
+- [x] **T23: Align public developer docs with current auth model**
+  - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(marketing)/developers/quickstart/page.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(marketing)/resources/docs/page.tsx`
+  - Change: Remove API-key/bearer language and document current session-cookie flow.
+  - Acceptance:
+    - [x] No public quickstart content instructs Bearer/API key auth for `/api/evaluate`.
+    - [x] Planned integrations are labeled as planned, not available now.
+
+- [x] **T24: Harden smoke tests and evidence accuracy**
+  - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/tests/smoke.spec.ts`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/reports/T19.md`
+  - Change: Make auth redirect assertions strict and correct smoke test counts in report.
+  - Acceptance:
+    - [x] Auth-guard tests fail if redirect does not happen.
+    - [x] Test documentation matches the real suite size.
+
+- [x] **T25: Reconcile execution artifacts with remediation pass**
+  - Files: `/Users/khaleeq/.windsurf/plans/mvp-checklist-execution-55822b.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/reports/T21.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/reports/T22.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/reports/T23.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/reports/T24.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/reports/T25.md`
+  - Change: Record remediation work as an auditable continuation of the contract.
+  - Acceptance:
+    - [x] Plan and report artifacts reflect remediation scope and validation outcomes.
+    - [x] Checklist and reports are no longer internally contradictory for resolved items.
 
 ---
 
@@ -677,3 +714,5 @@ A task is only executable-complete when all are true:
 - [x] Added full concern register, scope reset, phased plan, and acceptance criteria.
 - [x] Incorporated trust/clarity/control framework from the attached SaaS UI excellence document.
 - [x] Added Task Execution Contract with preflight, validation gates, edge-case checks, rollback, and verifiable completion criteria.
+- [x] Added Sprint 4 remediation tasks (T21-T25) for post-execution truth/alignment fixes.
+- [x] Updated C3 status to resolved after API/auth contract repairs.
