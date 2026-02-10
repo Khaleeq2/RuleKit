@@ -249,12 +249,16 @@ export default function TestsPage() {
       {tests.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
-            <p className="text-[var(--muted-foreground)] mb-4">
-              No test cases yet. Add tests to verify your rulebook logic.
+            <h3 className="font-semibold text-[var(--foreground)] mb-2">No tests yet</h3>
+            <p className="text-sm text-[var(--muted-foreground)] mb-1 max-w-md mx-auto">
+              Tests let you check that your rules give the right answer for specific inputs.
+            </p>
+            <p className="text-sm text-[var(--muted-foreground)] mb-6 max-w-md mx-auto">
+              Example: &ldquo;A 25-year-old with $80k income should <strong>pass</strong> the loan check.&rdquo;
             </p>
             <Button onClick={handleAddTest}>
               <Plus className="w-4 h-4" />
-              Add first test
+              Create your first test
             </Button>
           </CardContent>
         </Card>
@@ -383,8 +387,10 @@ function TestCard({
               {test.lastResult ? (
                 <p className="text-xs mt-1 flex items-center gap-1.5 flex-wrap">
                   <span className="text-[var(--muted-foreground)]">Expected: <strong>{test.expectedVerdict}</strong></span>
-                  <span className="text-[var(--muted-foreground)]">·</span>
-                  <span className="text-[var(--muted-foreground)]">Got: <strong>{test.lastResult.actualVerdict}</strong></span>
+                  <span className="text-[var(--muted-foreground)]">→</span>
+                  <span className={test.lastResult.passed ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}>
+                    Got: <strong>{test.lastResult.actualVerdict}</strong>
+                  </span>
                   {test.lastResult.passed ? (
                     <CheckCircle2 className="w-3 h-3 text-[var(--success)] inline" />
                   ) : (
@@ -534,9 +540,9 @@ function TestEditor({
   return (
     <>
       <SheetHeader>
-        <SheetTitle>{test?.id ? 'Edit test' : 'Add test'}</SheetTitle>
+        <SheetTitle>{test?.id ? 'Edit test' : 'Create a test'}</SheetTitle>
         <SheetDescription>
-          Define the input and expected output for this test case
+          Provide sample input and the result you expect — RuleKit will check if your rules agree.
         </SheetDescription>
       </SheetHeader>
 
@@ -565,13 +571,18 @@ function TestEditor({
 
         {/* Input JSON */}
         <div className="space-y-2">
-          <Label htmlFor="inputJson">Input JSON</Label>
+          <Label htmlFor="inputJson">Test input</Label>
+          <p className="text-[12px] text-[var(--muted-foreground)] -mt-0.5">
+            The data your rules will evaluate. Use JSON format.
+          </p>
           <Textarea
             id="inputJson"
             value={inputJson}
             onChange={(e) => handleInputJsonChange(e.target.value)}
             className="font-mono text-sm min-h-[200px]"
-            placeholder="{}"
+            placeholder={schemaFields.length > 0
+              ? `{\n${schemaFields.map(f => `  "${f.name}": ${f.example ? (f.type === 'string' || f.type === 'enum' ? `"${f.example}"` : f.example) : '"..."'}`).join(',\n')}\n}`
+              : '{}'}
           />
           {jsonError && (
             <p className="text-xs text-[var(--destructive)] flex items-center gap-1">
@@ -581,14 +592,14 @@ function TestEditor({
           )}
           {schemaFields.length > 0 && (
             <p className="text-xs text-[var(--muted-foreground)]">
-              Expected fields: {schemaFields.map(f => f.name).join(', ')}
+              Your schema fields: {schemaFields.map(f => <code key={f.id} className="px-1 py-0.5 rounded bg-[var(--muted)] text-[11px]">{f.name}</code>).reduce((prev, curr, i) => <>{prev}{i > 0 ? ' ' : ''}{curr}</> as any, <></>)}
             </p>
           )}
         </div>
 
         {/* Expected verdict */}
         <div className="space-y-2">
-          <Label>Expected verdict</Label>
+          <Label>What result do you expect?</Label>
           <div className="grid grid-cols-2 gap-3">
             <Button
               variant={expectedVerdict === 'pass' ? 'default' : 'outline'}
@@ -611,13 +622,16 @@ function TestEditor({
 
         {/* Expected reason */}
         <div className="space-y-2">
-          <Label htmlFor="expectedReason">Expected reason (optional)</Label>
+          <Label htmlFor="expectedReason">Why? (optional)</Label>
           <Input
             id="expectedReason"
             value={expectedReason}
             onChange={(e) => setExpectedReason(e.target.value)}
-            placeholder="Expected reason message"
+            placeholder="e.g., Credit score is above 650"
           />
+          <p className="text-[12px] text-[var(--muted-foreground)]">
+            A short note for yourself about why this input should get this result.
+          </p>
         </div>
       </div>
 

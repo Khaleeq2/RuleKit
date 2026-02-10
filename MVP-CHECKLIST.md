@@ -450,12 +450,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] Editor remains usable on smaller screens.
     - [x] User can add one field without needing JSON knowledge.
 
-- [ ] **T12: Simplify tests editor copy and expected input guidance**
+- [x] **T12: Simplify tests editor copy and expected input guidance**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/rulebooks/[id]/tests/page.tsx`
   - Change: Add plain-language examples and reduce jargon.
   - Acceptance:
-    - [ ] User can create and run one test with built-in guidance.
-    - [ ] Expected vs actual output is visually obvious.
+    - [x] User can create and run one test with built-in guidance.
+    - [x] Expected vs actual output is visually obvious.
 
 - [ ] **T13: Rework dead-end integrations experience**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/integrations/page.tsx`
