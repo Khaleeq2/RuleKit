@@ -129,7 +129,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
   - Example: submit hint says cmd+enter while enter submits.
   - Fix: align all hints/tooltips with real behavior.
 
-- [ ] **C12: Account deletion wording mismatch**
+- [x] **C12: Account deletion wording mismatch**
   - UI implies deletion now; implementation signs out + request semantics.
   - Fix: accurate copy and explicit flow states.
 
@@ -485,11 +485,11 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
   - Acceptance:
     - [x] User can answer "what does one credit get me?" from the page alone.
 
-- [ ] **T17: Settings truthfulness pass (delete account flow)**
+- [x] **T17: Settings truthfulness pass (delete account flow)**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/settings/page.tsx`
   - Change: Update destructive action language to match actual behavior.
   - Acceptance:
-    - [ ] No wording implies immediate deletion when behavior is request-based/sign-out.
+    - [x] No wording implies immediate deletion when behavior is request-based/sign-out.
 
 - [ ] **T18: Accessibility pass on core journeys**
   - Files: Home/Auth/Rulebooks/History/Billing/Settings surfaces

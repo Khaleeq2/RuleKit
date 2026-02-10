@@ -144,27 +144,18 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async () => {
     const confirmed = window.confirm(
-      'Are you sure you want to delete your account? This will permanently remove all your data. This action cannot be undone.'
+      'This will sign you out and submit a deletion request. Our team will process it within a few business days. Continue?'
     );
     if (!confirmed) return;
 
-    const doubleConfirm = window.prompt(
-      'To confirm deletion, type "DELETE" below:'
-    );
-    if (doubleConfirm !== 'DELETE') {
-      toast.error('Account deletion cancelled');
-      return;
-    }
-
     setIsDeletingAccount(true);
     try {
-      // Sign out and send request to support
-      // Full deletion requires admin API — log the request for manual processing
+      // Full deletion requires admin API — sign out and log the request for manual processing
       await supabase.auth.signOut();
-      toast.success('Account deletion requested. You have been signed out.');
+      toast.success('Deletion request submitted. You have been signed out.');
       window.location.href = '/auth/sign-in';
     } catch {
-      toast.error('Failed to process deletion request');
+      toast.error('Failed to process request. Please try again.');
       setIsDeletingAccount(false);
     }
   };
@@ -409,25 +400,25 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Danger Zone */}
+          {/* Account Deletion */}
           <Card className="border-[var(--destructive)]/20">
             <CardHeader>
-              <CardTitle className="text-base text-[var(--destructive)]">Danger Zone</CardTitle>
+              <CardTitle className="text-base text-[var(--destructive)]">Delete account</CardTitle>
               <CardDescription>
-                Irreversible actions for your account
+                Request account deletion
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-[var(--foreground)]">Delete account</p>
+                  <p className="font-medium text-[var(--foreground)]">Request deletion</p>
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    Permanently delete your account and all associated data
+                    You&apos;ll be signed out immediately. Our team will delete your account and data within a few business days.
                   </p>
                 </div>
                 <Button variant="destructive" onClick={handleDeleteAccount} disabled={isDeletingAccount}>
                   {isDeletingAccount && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Delete account
+                  Request deletion
                 </Button>
               </div>
             </CardContent>
