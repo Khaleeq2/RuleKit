@@ -107,7 +107,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
   - Checklist includes test suite/deploy before first value is stable.
   - Fix: rewrite onboarding into simpler 3-step progression.
 
-- [ ] **C7: Technical error copy leaks environment setup details**
+- [x] **C7: Technical error copy leaks environment setup details**
   - Users see `.env`/API key troubleshooting text in product.
   - Fix: split user-facing and developer-facing error language.
 
@@ -392,12 +392,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] Before submit, user can predict behavior.
     - [x] Mode is visible in both empty and active chat states.
 
-- [ ] **T4: Remove technical setup language from user-facing errors**
+- [x] **T4: Remove technical setup language from user-facing errors**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`
   - Change: Replace `.env`/API-key operational text with user-safe recovery messaging.
   - Acceptance:
-    - [ ] No environment-variable references in end-user toast/message copy.
-    - [ ] Errors provide a clear next step.
+    - [x] No environment-variable references in end-user toast/message copy.
+    - [x] Errors provide a clear next step.
 
 - [ ] **T5: Match keyboard submit hint to real behavior**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`

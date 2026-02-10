@@ -479,11 +479,11 @@ export default function HomePage() {
       setMessages(prev =>
         prev.map(m =>
           m.id === msgId
-            ? { ...m, content: error.message || 'Failed to get response.', isStreaming: false }
+            ? { ...m, content: 'Something went wrong. Please try your question again.', isStreaming: false }
             : m
         )
       );
-      toast.error(error.message || 'Chat failed');
+      toast.error('Unable to get a response — please try again');
     } finally {
       setIsStreaming(false);
       abortControllerRef.current = null;
@@ -596,10 +596,10 @@ export default function HomePage() {
       const userFriendly = isNoRules
         ? 'No active rules found for this rulebook. Go to the Rules page and add at least one enabled rule.'
         : isApiKey
-        ? 'API configuration issue. Check that your GROQ_API_KEY is set in .env.local and restart the server.'
+        ? 'Something went wrong on our end. Please try again in a moment — if the issue persists, contact support.'
         : isTimeout
         ? 'The evaluation timed out. Try with shorter input or fewer rules.'
-        : msg || 'Evaluation failed. Please try again.';
+        : 'Evaluation failed. Please try again.';
 
       const errorMessage: Message = {
         id: `msg-${crypto.randomUUID()}`,
@@ -608,7 +608,7 @@ export default function HomePage() {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
-      toast.error(isNoRules ? 'No rules configured' : isApiKey ? 'API error' : 'Evaluation failed', {
+      toast.error(isNoRules ? 'No rules configured' : isApiKey ? 'Service temporarily unavailable' : 'Evaluation failed', {
         description: userFriendly,
       });
     } finally {
