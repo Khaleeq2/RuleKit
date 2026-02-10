@@ -73,7 +73,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
 
 ## Critical Gaps
 
-- [ ] **C1: Promise mismatch on file support**
+- [x] **C1: Promise mismatch on file support**
   - Problem: Marketing claims "any file type," product supports text-like formats only.
   - User impact: feels misleading on first interaction.
   - Evidence: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(marketing)/_components/landing/HeroSectionV2.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`
@@ -371,12 +371,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
 
 ## Sprint 1: Trust and Clarity
 
-- [ ] **T1: Fix misleading file claims on marketing**
+- [x] **T1: Fix misleading file claims on marketing**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(marketing)/_components/landing/HeroSectionV2.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(marketing)/_lib/public-content.ts`
   - Change: Replace "any file type" with truthful supported-format language.
   - Acceptance:
-    - [ ] Landing claims match actual uploader support.
-    - [ ] No "any file type" copy remains unless implementation supports it.
+    - [x] Landing claims match actual uploader support.
+    - [x] No "any file type" copy remains unless implementation supports it.
 
 - [ ] **T2: Align uploader UX with real support**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`

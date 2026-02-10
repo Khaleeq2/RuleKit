@@ -40,7 +40,7 @@ export function HeroSectionV2() {
 
             {/* Subhead */}
             <p className="mt-5 max-w-lg text-[1.0625rem] leading-[1.65] text-slate-500 lg:text-lg lg:leading-relaxed">
-              Upload any file or content and get instant, AI&#8209;powered verdicts.{' '}
+              Paste text or upload a file (JSON, CSV, TXT, XML, YAML, Markdown) and get instant, AI&#8209;powered verdicts.{' '}
               <span className="text-slate-700">With evidence, explanations, and exactly what to&nbsp;fix.</span>
             </p>
 
@@ -134,7 +134,7 @@ export function HeroSectionV2() {
               <div>
                 <p className="text-[14px] font-semibold text-slate-800">Apply Across Everything</p>
                 <p className="text-[13px] leading-snug text-slate-500">
-                  Same standards across docs, forms, AI, and any file type.
+                  Same standards across docs, forms, AI outputs, and structured data.
                 </p>
               </div>
             </div>
