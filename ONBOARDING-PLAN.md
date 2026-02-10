@@ -1,3 +1,5 @@
+> **⚠️ ARCHIVED** — This strategy has been implemented. The active task tracker is [`MVP-CHECKLIST.md`](./MVP-CHECKLIST.md).
+
 # RuleKit — Onboarding Strategy
 
 > Zero-friction path to the first "aha!" moment.

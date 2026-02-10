@@ -504,12 +504,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] A repeatable automated smoke suite exists and passes.
     - [x] Core path regressions are caught before release.
 
-- [ ] **T20: Remove duplicate planning docs or link them to this master**
+- [x] **T20: Remove duplicate planning docs or link them to this master**
   - Files: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/TODO.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/ONBOARDING-PLAN.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/DESIGN-AUDIT.md`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/MVP.md`
   - Change: avoid checklist fragmentation.
   - Acceptance:
-    - [ ] This file is the active master.
-    - [ ] Other docs are archived or explicitly linked as reference-only.
+    - [x] This file is the active master.
+    - [x] Other docs are archived or explicitly linked as reference-only.
 
 ---
 

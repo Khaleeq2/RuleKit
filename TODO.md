@@ -1,3 +1,5 @@
+> **⚠️ ARCHIVED** — This document is historical. The active task tracker is [`MVP-CHECKLIST.md`](./MVP-CHECKLIST.md).
+
 # RuleKit — Conversational Rules Engine
 
 > Evolve Home page from mock submission → real AI-powered evaluation via Groq Cloud API.

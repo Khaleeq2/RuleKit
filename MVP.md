@@ -1,3 +1,5 @@
+> **⚠️ ARCHIVED** — This spec has been superseded by [`MVP-CHECKLIST.md`](./MVP-CHECKLIST.md), which is the active master.
+
 ## RuleKit MVP — Product + UI/UX Spec (2026 Pattern)
 
 ### Product truth (do not deviate)

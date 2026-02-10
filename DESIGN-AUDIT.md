@@ -1,3 +1,5 @@
+> **⚠️ ARCHIVED** — This audit informed the task list in [`MVP-CHECKLIST.md`](./MVP-CHECKLIST.md), which is the active master.
+
 # RuleKit Design Audit — 2026 SaaS UI Excellence
 
 Assessment against the 2026 SaaS UI excellence philosophy. Current alignment: ~60%.
