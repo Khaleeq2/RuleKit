@@ -79,7 +79,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
   - Evidence: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(marketing)/_components/landing/HeroSectionV2.tsx`, `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`
   - Fix: align copy with actual support or implement real file extraction.
 
-- [ ] **C2: Input mode ambiguity (evaluate vs chat)**
+- [x] **C2: Input mode ambiguity (evaluate vs chat)**
   - Problem: one submit path silently switches behavior.
   - User impact: users cannot predict outcomes.
   - Evidence: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`
@@ -385,12 +385,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] Drag/drop and paperclip hints list same formats.
     - [x] Error message and hint text are consistent.
 
-- [ ] **T3: Make input mode explicit**
+- [x] **T3: Make input mode explicit**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`
   - Change: Add visible mode state so users know when submit evaluates vs chats.
   - Acceptance:
-    - [ ] Before submit, user can predict behavior.
-    - [ ] Mode is visible in both empty and active chat states.
+    - [x] Before submit, user can predict behavior.
+    - [x] Mode is visible in both empty and active chat states.
 
 - [ ] **T4: Remove technical setup language from user-facing errors**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`

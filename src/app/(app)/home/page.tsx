@@ -90,6 +90,7 @@ export default function HomePage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [modeOverride, setModeOverride] = useState<'check' | 'follow-up' | null>(null);
   const [recentSessions, setRecentSessions] = useState<Session[]>([]);
   const [activeRuleNames, setActiveRuleNames] = useState<string[]>([]);
 
@@ -502,6 +503,18 @@ export default function HomePage() {
   // Determine if this is a follow-up question or a new evaluation
   const hasEvaluation = lastEvaluationRef.current !== null;
 
+  // T3: Explicit mode — users can see and override what submit will do
+  const predictedMode: 'check' | 'follow-up' = hasEvaluation && !looksLikeData(runInput) ? 'follow-up' : 'check';
+  const activeMode = modeOverride ?? predictedMode;
+  const canToggleMode = hasEvaluation;
+  const toggleMode = () => {
+    if (!canToggleMode) return;
+    setModeOverride(prev => {
+      const current = prev ?? predictedMode;
+      return current === 'check' ? 'follow-up' : 'check';
+    });
+  };
+
   // Handle run — routes between evaluate (new input) and chat (follow-up)
   const handleRun = async () => {
     // Ref-based lock prevents double-fire (state checks are stale in closures)
@@ -524,10 +537,10 @@ export default function HomePage() {
     setMessages(prev => [...prev, userMessage]);
     setRunInput('');
 
-    // Route: if we have an evaluation and the input looks like a question, stream chat
-    // Otherwise, run a new evaluation. forceEvaluateRef bypasses chat routing (e.g. retry flow).
-    const isFollowUp = hasEvaluation && !looksLikeData(content) && !forceEvaluateRef.current;
+    // Route based on explicit mode indicator (T3) — user can see and override this
+    const isFollowUp = activeMode === 'follow-up' && !forceEvaluateRef.current;
     forceEvaluateRef.current = false;
+    setModeOverride(null);
 
     if (isFollowUp) {
       try {
@@ -617,6 +630,7 @@ export default function HomePage() {
     setMessages([]);
     setSessionId(null);
     setRunInput('');
+    setModeOverride(null);
     lastEvaluationRef.current = null;
     busyLockRef.current = false;
     titleGeneratedRef.current = false;
@@ -800,6 +814,9 @@ export default function HomePage() {
                 textareaRef={textareaRef}
                 minRows={1}
                 showRulebookSelector={false}
+                activeMode={activeMode}
+                canToggleMode={canToggleMode}
+                onModeToggle={toggleMode}
               />
             </div>
           </div>
@@ -865,6 +882,9 @@ export default function HomePage() {
                     setSelectedRulebook={setSelectedRulebook}
                     textareaRef={textareaRef}
                     minRows={4}
+                    activeMode={activeMode}
+                    canToggleMode={canToggleMode}
+                    onModeToggle={toggleMode}
                   />
                 </div>
 
@@ -999,6 +1019,9 @@ interface SuperInputProps {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   minRows?: number;
   showRulebookSelector?: boolean;
+  activeMode?: 'check' | 'follow-up';
+  canToggleMode?: boolean;
+  onModeToggle?: () => void;
 }
 
 function SuperInput({
@@ -1015,6 +1038,9 @@ function SuperInput({
   textareaRef,
   minRows = 1,
   showRulebookSelector = true,
+  activeMode = 'check',
+  canToggleMode = false,
+  onModeToggle,
 }: SuperInputProps) {
   const canSubmit = !isRunning && !!selectedRulebook && !!value.trim();
   const [isDragging, setIsDragging] = useState(false);
@@ -1200,25 +1226,54 @@ function SuperInput({
           </button>
         </div>
 
-        {/* Submit Button - circular ArrowUp */}
-        <button
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          title="Submit (⌘+Enter)"
-          className={`
-            w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200
-            ${canSubmit
-              ? 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 active:scale-95 cursor-pointer'
-              : 'bg-[var(--muted)] text-[var(--muted-foreground)]/50 cursor-not-allowed'
-            }
-          `}
-        >
-          {isRunning ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Mode indicator — shows what submit will do */}
+          <button
+            type="button"
+            onClick={canToggleMode ? onModeToggle : undefined}
+            aria-label={activeMode === 'check' ? 'Mode: Checking input' : 'Mode: Follow-up question'}
+            className={`
+              flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all
+              ${activeMode === 'check'
+                ? 'text-[var(--brand)] bg-[var(--brand)]/[0.06]'
+                : 'text-violet-600 dark:text-violet-400 bg-violet-500/[0.06]'
+              }
+              ${canToggleMode ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}
+            `}
+          >
+            {activeMode === 'check' ? (
+              <>
+                <ShieldCheck className="w-3 h-3" />
+                Check
+              </>
+            ) : (
+              <>
+                <MessageSquare className="w-3 h-3" />
+                Follow-up
+              </>
+            )}
+          </button>
+
+          {/* Submit Button - circular ArrowUp */}
+          <button
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            title="Submit (⌘+Enter)"
+            className={`
+              w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200
+              ${canSubmit
+                ? 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 active:scale-95 cursor-pointer'
+                : 'bg-[var(--muted)] text-[var(--muted-foreground)]/50 cursor-not-allowed'
+              }
+            `}
+          >
+            {isRunning ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
