@@ -125,7 +125,7 @@ Reference input used: `/Users/khaleeq/Downloads/SaaS UI Excellence in 2026_ Trus
 
 ## Secondary Gaps
 
-- [ ] **C11: Copy and behavior inconsistencies**
+- [x] **C11: Copy and behavior inconsistencies**
   - Example: submit hint says cmd+enter while enter submits.
   - Fix: align all hints/tooltips with real behavior.
 
@@ -399,12 +399,12 @@ Use this for sprint execution. Do not mark done unless acceptance criteria pass.
     - [x] No environment-variable references in end-user toast/message copy.
     - [x] Errors provide a clear next step.
 
-- [ ] **T5: Match keyboard submit hint to real behavior**
+- [x] **T5: Match keyboard submit hint to real behavior**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/(app)/home/page.tsx`
   - Change: Either implement cmd+enter behavior or update tooltip to Enter.
   - Acceptance:
-    - [ ] Tooltip/help text is accurate.
-    - [ ] Keyboard behavior is consistent and tested.
+    - [x] Tooltip/help text is accurate.
+    - [x] Keyboard behavior is consistent and tested.
 
 - [ ] **T6: Make sidebar discoverable for first-run users**
   - File: `/Users/khaleeq/Documents/projects/RuleKit/rulekit-v0.2/src/app/components/AppLayout.tsx`

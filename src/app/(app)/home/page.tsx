@@ -1258,7 +1258,7 @@ function SuperInput({
           <button
             onClick={onSubmit}
             disabled={!canSubmit}
-            title="Submit (⌘+Enter)"
+            title="Submit (Enter)"
             className={`
               w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200
               ${canSubmit
